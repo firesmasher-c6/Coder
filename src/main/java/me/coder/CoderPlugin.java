@@ -11,32 +11,29 @@ public class CoderPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Automatically create/load the config.yml
         saveDefaultConfig();
-
-        // Setup the directories
         setupFolders();
+        
         saveResource("example.txt", false);
+        File exFile = new File(getDataFolder(), "example.txt");
+        File destFile = new File(getDataFolder(), "scripts/example/example.txt");
+        if (exFile.exists()) {
+            destFile.getParentFile().mkdirs();
+            exFile.renameTo(destFile);
+        }
 
-        // Setup the script manager and command handler
         this.scriptManager = new ScriptManager(this);
-        CoderCommand cmdHandler = new CoderCommand(scriptManager);
+        CoderCommand cmdHandler = new CoderCommand(this, scriptManager);
 
-        // Register the command and tab completion
         getCommand("coder").setExecutor(cmdHandler);
         getCommand("coder").setTabCompleter(cmdHandler);
 
-        getLogger().info("Coder v1.0.0 enabled. Configuration and structure loaded.");
+        getLogger().info("Coder v1.3.0 enabled. Centralized scripts loaded.");
     }
 
     private void setupFolders() {
         if (!getDataFolder().exists()) getDataFolder().mkdirs();
-
-        // Standard script directories
-        new File(getDataFolder(), "Java/scripts").mkdirs();
-        new File(getDataFolder(), "Python/scripts").mkdirs();
-        
-        // NEW: Custom language script directory
         new File(getDataFolder(), "scripts").mkdirs();
+        new File(getDataFolder(), "scripts/example").mkdirs();
     }
 }

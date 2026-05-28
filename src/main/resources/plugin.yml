@@ -1,5 +1,5 @@
 name: Coder
-version: 1.2.0
+version: 1.3.0
 main: me.coder.CoderPlugin
 api-version: '1.20'
 commands:

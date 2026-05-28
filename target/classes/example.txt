@@ -2,17 +2,45 @@
 # Coder Plugin Introduces Phyton And Java execution
 # This is example.txt
 
-# For Phyton Scripts:
-Coder only reads .py and .java files,
-Those .py files should be in Coder/Phyton/scripts/
-
-# For Java Scripts:
-Coder reads .java files inside Coder/Java/scripts/
-these are executed manually through commands,
+# To add scripts you must use:
+.py - for phyton
+.java for java
+.cpp for c++
+.c for c 
+.lua for lua
+# Add these your script files at YOURSERVER/plugins/Coder/scripts/
 
 # Commands:
-/coder java run <name> - runs the java file 
-/coder phyton run <name> - runs the phyton file 
-/coder scripts reload - reloads the entire Java and Phyton Folder
-/coder phyton reload <scriptname> - reloads the specific .py file
-/coder java reload <scriptname>  - reloads the specific .java file
+/coder run <name> - Runs the script(phyton,java,c,c++, or lua)
+/coder reload <name> - reloads the script.
+
+<---- EXAMPLES ---->
+
+== PHYTON ==
+print("HELLO WORLD!")
+
+== JAVA ==
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+
+== C ==
+#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}
+
+== C++ ==
+#include <iostream>
+
+int main() {
+    std::cout << "Hello World!";
+    return 0;
+}
+
+== LUA ==
+print("Hello World!")
