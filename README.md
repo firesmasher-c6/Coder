@@ -8,8 +8,11 @@ Coder allows you to create custom commands and logic without the bloat of tradit
 * **Native Execution:** Execute real **Java** and **Python** code directly from your server.
 * **Lightweight:** No heavy dependencies.
 * **Modular:** Separate your variables (`.code`) from your logic (`.script`).
+* 
+<img width="2480" height="1748" alt="Coder" src="https://github.com/user-attachments/assets/ebe99fb8-4b5a-4c83-806c-1839931df1f2" />
 
 ## 📥 Installation
+
 1. Drop the `Coder.jar` into your `/plugins` folder.
 2. Start the server to generate the folder structure.
 3. Place your scripts in the corresponding folders:
