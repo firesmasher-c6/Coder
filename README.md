@@ -1,7 +1,5 @@
 # Coder Plugin
-**A modern, lightweight "Skript-like" plugin for Minecraft server automation.**
-
-**[!]** `The Phyton Uses Jython Which Supports Phyton 2.7!`
+**The Most Powerful Scripting Minecraft Plugin, lightweight "Skript-like" plugin for Minecraft server automation.**
 
 Coder allows you to create custom commands and logic without the bloat of traditional heavy scripting engines. By utilizing native Java/Python/Lua execution and a custom-built, simple syntax parser, Coder gives you full control over your server environment.
 
@@ -9,7 +7,8 @@ Coder allows you to create custom commands and logic without the bloat of tradit
 * **Modern Skript Syntax:** A clean, "Modern Skript" language designed for readability.
 * **Native Execution:** Execute real **Java** and **Lua/Python** code directly from your server.
 * **Lightweight:** No heavy dependencies.
-* 
+* **Load to Memory:** Load your scripts to your Server's Memory, ensuring that your scripts stay active.
+  
 <img width="2480" height="1748" alt="Coder" src="https://github.com/user-attachments/assets/ebe99fb8-4b5a-4c83-806c-1839931df1f2" />
 
 ## 📥 Installation
