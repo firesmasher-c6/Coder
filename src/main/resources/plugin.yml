@@ -1,8 +1,0 @@
-name: Coder
-version: 1.2.0
-main: me.coder.CoderPlugin
-api-version: '1.20'
-commands:
-  coder:
-    description: Main command for the Coder plugin.
-    usage: /coder <args>
