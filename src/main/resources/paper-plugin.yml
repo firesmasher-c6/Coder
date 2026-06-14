@@ -1,0 +1,13 @@
+name: CoderJSLoader
+version: 1.0.0
+main: me.coder.javascript.JSAddon
+api-version: '1.21'
+author: bronchacho_dev
+description: Bridges native JavaScript (.js) scripting execution straight into Coder's pipeline.
+
+dependencies:
+  server:
+    Coder:
+      load: BEFORE
+      required: true
+      join-classpath: true
