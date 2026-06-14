@@ -1,0 +1,11 @@
+name: CoderJavaFixer
+version: 1.0.0
+main: me.coder.javafixer.JavaFixerPlugin
+api-version: '1.21'
+
+dependencies:
+  server:
+    Coder:
+      load: BEFORE
+      required: true
+      join-classpath: true

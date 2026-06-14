@@ -1,25 +1,32 @@
-# Coder Plugin
-**The Most Powerful Scripting Minecraft Plugin, lightweight "Skript-like" plugin for Minecraft server automation.**
+# CoderJavaFixer 🛠️🛡️
 
-Coder allows you to create custom commands and logic without the bloat of traditional heavy scripting engines. By utilizing native Java/Python/Lua execution and a custom-built, simple syntax parser, Coder gives you full control over your server environment.
+`CoderJavaFixer` is a lightweight, high-performance security addon for Paper/Spigot Minecraft servers running the Coder runtime plugin ecosystem. It implements advanced compilation routing and **User Execution Control (UEC)** scanning matrices to ensure scripts executed by players do not contain malicious system handles.
 
-## 🚀 Features
-* **Modern Skript Syntax:** A clean, "Modern Skript" language designed for readability.
-* **Native Execution:** Execute real **Java** and **Lua/Python** code directly from your server.
-* **Lightweight:** No heavy dependencies.
-* **Load to Memory:** Load your scripts to your Server's Memory, ensuring that your scripts stay active.
-  
-<img width="2480" height="1748" alt="Coder" src="https://github.com/user-attachments/assets/ebe99fb8-4b5a-4c83-806c-1839931df1f2" />
+## ✨ Features
 
-## 📥 Installation
+* **Dynamic Command Routing:** Intercepts `/coder run` and `/coder execute` requests cleanly to handle live source compilation via Java's native compiler API.
+* **Warning-Free Registration:** Programmatically maps fallback aliases (`/coderjavafixer`, `/cjf`) directly into the live server command table, eliminating deprecated API warnings.
+* **User Execution Control (UEC):** Scans file contents before compilation to prevent unauthorized terminal access.
+* **Execution Bypass:** Automatically trusts the server `CONSOLE` and designated administrator accounts while keeping regular players or staff restricted.
 
-1. Drop the `Coder.jar` into your `/plugins` folder.
-2. Start the server to generate the folder structure.
-3. Place your scripts in the corresponding folders:
-    * `/plugins/Coder/scripts/` (Scripts)
+## 🛡️ Security Validation Profile
 
-## 📖 Documentation
-For a full guide on how to write scripts and use commands, see the [User Guide](guide.md).
+The built-in `UserExecutionControl` layer blocks unauthorized access to the underlying host system by blacklisting specific keywords and runtime components:
+* `Runtime.getRuntime().exec`
+* `ProcessBuilder`
+* `java.lang.Process`
+* Unix shells (`/bin/sh`, `/bin/bash`)
+* Windows shells (`cmd.exe`, `powershell`)
+* System utilities (`wmic`, `dmidecode`)
 
-## ⚠️ Security Warning
-Because Coder allows native Python and Java execution, **only allow trusted administrators** to manage files in the `/scripts/` directory, as these have full access to system commands.
+---
+
+## 🚀 Installation & Setup
+
+1. **Prerequisites:** Ensure your server environment runs **OpenJDK 21+** (or the version corresponding to your platform target).
+2. Download or compile the `JavaFixerAddon.jar` and place it into your server's `/plugins/` directory.
+3. Open `UserExecutionControl.java` and adjust your administrator account name:
+   ```java
+   if (sender.getName().equals("YourMinecraftName")) {
+       return true;
+   }
