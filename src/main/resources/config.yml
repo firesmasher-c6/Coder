@@ -1,0 +1,15 @@
+# Coder Plugin Configuration
+plugin:
+  enabled: true
+  version: 1.3.6
+
+# Script Settings
+scripts:
+  python-enabled: true
+  lua-enabled: true
+  java-enabled: true
+
+# Error Logging
+error-logging:
+  enabled: true
+  log-directory: "Logs/Error-Logs"
