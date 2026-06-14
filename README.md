@@ -1,25 +1,37 @@
-# Coder Plugin
-**The Most Powerful Scripting Minecraft Plugin, lightweight "Skript-like" plugin for Minecraft server automation.**
+# CoderJSLoader 🚀
 
-Coder allows you to create custom commands and logic without the bloat of traditional heavy scripting engines. By utilizing native Java/Python/Lua execution and a custom-built, simple syntax parser, Coder gives you full control over your server environment.
+An ultra-lightweight (~1.37MB) native JavaScript (.js) script execution addon for the **Coder v1.3.6** Minecraft plugin. 
 
-## 🚀 Features
-* **Modern Skript Syntax:** A clean, "Modern Skript" language designed for readability.
-* **Native Execution:** Execute real **Java** and **Lua/Python** code directly from your server.
-* **Lightweight:** No heavy dependencies.
-* **Load to Memory:** Load your scripts to your Server's Memory, ensuring that your scripts stay active.
-  
-<img width="2480" height="1748" alt="Coder" src="https://github.com/user-attachments/assets/ebe99fb8-4b5a-4c83-806c-1839931df1f2" />
+Optimized specifically for modern **Paper 1.21+** servers running **OpenJDK 21 to 25**. It uses advanced Java reflection hooks to seamlessly unmask and support the `.js` extension inside Coder's core `/coder run` command pipeline without triggering any Mojang remapper bugs or Error T10 security blocks.
 
-## 📥 Installation
+## 🌟 Key Features
+- **Native `.js` Extension Parsing**: No ugly file masking or workarounds. Natively type `/coder run script.js`.
+- **Pre-Baked API Variable Injections**: Automatically maps `bukkit` (Server instance), `api` (Coder API handle), and `sender` (Command Executor) straight into your JavaScript scope.
+- **Pure Performance Engine**: Powered by a shaded Mozilla Rhino JSR-223 runtime environment that is highly optimized and exceptionally gentle on your host's RAM.
+- **Remapper Protection**: Built completely using the modern `paper-plugin.yml` layout to completely dodge Mojang's plugin remapper bytecode corruption.
 
-1. Drop the `Coder.jar` into your `/plugins` folder.
-2. Start the server to generate the folder structure.
-3. Place your scripts in the corresponding folders:
-    * `/plugins/Coder/scripts/` (Scripts)
+## 🛠️ Installation Layout
+1. Drop the compiled `CoderJSLoader-1.0.0.jar` directly into your server's primary `/plugins/` folder.
+2. Restart your server.
+3. Verify that the startup console states: `[JS Reflection] SUCCESS! Surgically modified Coder's executor to support .js extension.`
 
-## 📖 Documentation
-For a full guide on how to write scripts and use commands, see the [User Guide](guide.md).
+## 📖 Scripting Quick Start
+Place your script files inside your unified Coder folder: `/plugins/Coder/scripts/` ending with a `.js` extension.
 
-## ⚠️ Security Warning
-Because Coder allows native Python and Java execution, **only allow trusted administrators** to manage files in the `/scripts/` directory, as these have full access to system commands.
+**Example Script (`hello.js`):**
+```javascript
+// Use raw section symbols for clean color parameters
+var prefix = "§e§l[JS Engine] §f";
+
+// Broadcast to your game chat natively using the pre-baked 'bukkit' handle
+bukkit.broadcastMessage(prefix + "JavaScript is flying natively on this node! 🚀");
+
+// Log text directly straight to your Pterodactyl console log array
+api.log("[JS Addon] Script executed successfully.");
+```
+
+**To Execute In-Game or via Terminal Console:**
+```text
+/coder run hello.js
+```
+
