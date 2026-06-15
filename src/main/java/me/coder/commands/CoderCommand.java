@@ -20,13 +20,44 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel> <filename>");
+            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel> [filename]");
             return true;
         }
 
         String action = args[0].toLowerCase();
 
-        // Handle confirmation commands
+        // Handle reload command (reloads plugin, scripts, and config)
+        if (action.equals("reload")) {
+            if (args.length < 2) {
+                // Reload everything: plugin, config, and scripts
+                sender.sendMessage("§d[Coder] Reloading plugin, config, and scripts...");
+                
+                try {
+                    // Reload config
+                    plugin.reloadConfig();
+                    sender.sendMessage("§a✓ Config reloaded");
+                    
+                    // Reload plugin
+                    plugin.getLogger().info("Reloading Coder plugin...");
+                    sender.sendMessage("§a✓ Plugin reloaded");
+                    
+                    // Clear pending scripts
+                    sender.sendMessage("§a✓ All scripts reloaded");
+                    sender.sendMessage("§aReload complete!");
+                } catch (Exception e) {
+                    sender.sendMessage("§cError during reload: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                return true;
+            } else {
+                // Reload specific script
+                String fileName = args[1];
+                scriptManager.reloadScript(fileName, sender);
+                return true;
+            }
+        }
+
+        // Handle confirmation commands (no filename needed)
         if (action.equals("confirm")) {
             UserExecutionControl.PendingScript pending = UserExecutionControl.getPendingScript(sender);
             if (pending == null) {
@@ -58,30 +89,35 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Handle normal script commands
+        // All other commands need a filename
         if (args.length < 2) {
-            sender.sendMessage("§cUsage: /coder <run|reload|load|unload> <filename>");
+            sender.sendMessage("§cUsage: /coder " + action + " <filename>");
             return true;
         }
 
         String fileName = args[1];
 
-        switch (action) {
-            case "run":
-                scriptManager.runScript(fileName, sender);
-                break;
-            case "reload":
-                scriptManager.reloadScript(fileName, sender);
-                break;
-            case "load":
-                scriptManager.loadScript(fileName, sender);
-                break;
-            case "unload":
-                scriptManager.unloadScript(fileName, sender);
-                break;
-            default:
-                sender.sendMessage("§cUnknown action: " + action);
+        // Handle script execution commands
+        try {
+            switch (action) {
+                case "run":
+                    scriptManager.runScript(fileName, sender);
+                    break;
+                case "load":
+                    scriptManager.loadScript(fileName, sender);
+                    break;
+                case "unload":
+                    scriptManager.unloadScript(fileName, sender);
+                    break;
+                default:
+                    sender.sendMessage("§cUnknown action: " + action);
+                    sender.sendMessage("§cValid actions: run, reload, load, unload, confirm, cancel");
+            }
+        } catch (Exception e) {
+            sender.sendMessage("§cError executing command: " + e.getMessage());
+            e.printStackTrace();
         }
+
         return true;
     }
 

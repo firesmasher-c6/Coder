@@ -11,8 +11,8 @@ public class CoderPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
         setupFolders();
+        saveDefaultConfig();
 
         this.scriptManager = new ScriptManager(this);
         
@@ -21,11 +21,13 @@ public class CoderPlugin extends JavaPlugin {
         getCommand("coder").setExecutor(cmdHandler);
         getCommand("coder").setTabCompleter(cmdHandler);
 
-        getLogger().info("Coder v1.3.6 enabled.");
+        getLogger().info("Coder v1.4.2 enabled.");
     }
 
     private void setupFolders() {
-        if (!getDataFolder().exists()) getDataFolder().mkdirs();
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
         new File(getDataFolder(), "scripts").mkdirs();
         new File(getDataFolder(), "Logs/Error-Logs").mkdirs();
     }
@@ -33,5 +35,9 @@ public class CoderPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         getLogger().info("Coder plugin disabled.");
+    }
+
+    public ScriptManager getScriptManager() {
+        return scriptManager;
     }
 }

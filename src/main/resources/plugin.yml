@@ -1,5 +1,5 @@
 name: Coder
-version: 1.3.6-SNAPSHOT
+version: 1.4.2
 main: me.coder.CoderPlugin
 api-version: '1.21'
 
@@ -9,5 +9,12 @@ commands:
   coder:
     description: Execute scripts (Python, Lua, or Java)
     usage: /coder <run|reload|load|unload> <filename>
+    permission: coder.admin
+    permission-message: You must be an OP to use this command!
     aliases:
       - code
+
+permissions:
+  coder.admin:
+    description: Allows execution and management of coder scripts.
+    default: op
