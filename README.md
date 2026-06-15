@@ -16,7 +16,3 @@
 | `/cjf execute-class <file>` | Runs a previously compiled class from the cache. |
 
 ---
-## 🚀 Installation
-1. Place the JAR into your `/plugins/` folder.
-2. Edit `UserExecutionControl.java` to set your Minecraft username in the bypass list.
-3. Restart the server.

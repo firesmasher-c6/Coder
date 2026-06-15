@@ -1,5 +1,5 @@
 name: CoderJavaFixer
-version: 1.0.0
+version: 1.6.2
 main: me.coder.javafixer.JavaFixerPlugin
 api-version: '1.21'
 

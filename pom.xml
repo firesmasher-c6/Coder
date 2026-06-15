@@ -6,7 +6,7 @@
 
     <groupId>me.coder</groupId>
     <artifactId>CoderJavaFixer</artifactId>
-    <version>1.0.0</version>
+    <version>1.6.2</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>

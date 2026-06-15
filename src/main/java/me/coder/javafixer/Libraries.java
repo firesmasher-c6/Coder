@@ -3,6 +3,8 @@ package me.coder.javafixer;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.StringJoiner;
 
 public class Libraries {
@@ -26,7 +28,22 @@ public class Libraries {
             classpath.add(bukkitJar.getAbsolutePath());
         } catch (Exception ignored) {}
 
-        // 3. Inject all other active plugin libraries (like Coder itself)
+        // 3. Extract transitive runtime library targets (Adventure, Kyori, Bungee chat dependencies)
+        try {
+            ClassLoader serverLoader = Bukkit.class.getClassLoader();
+            if (serverLoader instanceof URLClassLoader) {
+                for (URL url : ((URLClassLoader) serverLoader).getURLs()) {
+                    try {
+                        File jarFile = new File(url.toURI());
+                        if (jarFile.exists() && jarFile.getName().endsWith(".jar")) {
+                            classpath.add(jarFile.getAbsolutePath());
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 4. Inject all other active plugin libraries (like Coder itself)
         for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
             try {
                 File pluginJar = new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
