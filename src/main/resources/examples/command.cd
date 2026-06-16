@@ -1,0 +1,4 @@
+command /hello:
+permission: op
+trigger:
+    send "Hello There!"

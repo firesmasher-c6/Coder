@@ -1,0 +1,106 @@
+# CodeDSL Example Scripts
+# These examples demonstrate the CodeDSL syntax
+
+# Example 1: Basic Broadcast
+# File: hello-world.cd
+
+broadcast "Hello, World!"
+broadcast "This is CodeDSL in action!"
+
+
+# Example 2: Variable Usage
+# File: variables.code
+
+var playerCount = 5
+var serverName = "MyServer"
+
+broadcast "Welcome to {serverName}!"
+console.log "Current player count: {playerCount}"
+
+
+# Example 3: Command Definition
+# File: test-command.cd
+
+command /test [<text>]:
+    permission: op
+    trigger:
+        if arg-1 is "hello":
+            broadcast "Hello received!"
+            send "You said hello!" to player
+        else if arg-1 is "goodbye":
+            broadcast "Goodbye received!"
+        else:
+            send "Unknown argument"
+
+
+# Example 4: Async Execution
+# File: async-example.cd
+
+import async
+
+async:
+    broadcast "This runs asynchronously!"
+    wait 2s
+    broadcast "After 2 seconds!"
+
+
+# Example 5: File Operations
+# File: file-operations.code
+
+fileWrite /plugins/Coder/CodeDSL/examples/output.txt {
+    # This file was created by CodeDSL
+    # Timestamp: 2024-01-15
+    Hello, File System!
+}
+
+fileRead /plugins/Coder/CodeDSL/examples/output.txt
+
+
+# Example 6: Using Secrets with Obfuscated Variables
+# File: secrets.cd
+
+obfuscatedVAR apiKey = "your-secret-api-key-here"
+obfuscatedVAR password = "super-secret-password"
+
+console.log "Secrets stored safely!"
+
+
+# Example 7: Repeating Tasks
+# File: repeating-task.code
+
+every 5s {
+    broadcast "This repeats every 5 seconds!"
+}
+
+
+# Example 8: Inter-Script Communication
+# File: script-a.cd
+
+import Connection
+
+connectToFile "script-b.cd":
+    if file is connected:
+        broadcast "Connected to script-b.cd!"
+        execute command "say Hello from Script A!" in console
+
+
+# Example 9: Console Logging
+# File: logging.code
+
+console.log "Starting script..."
+console.log {
+    This is a multi-line log!
+    Multiple lines at once!
+    Very convenient!
+}
+console.log "Script completed!"
+
+
+# Example 10: Delayed Execution
+# File: delayed.cd
+
+broadcast "Starting delayed task..."
+delay 20
+broadcast "This shows after 20 ticks (1 second)!"
+delay 40
+broadcast "Final message!"

@@ -1,0 +1,5 @@
+var name = Hello World
+obfuscatedVAR secretname = Darrel
+
+varRead name
+obfvarRead secretname

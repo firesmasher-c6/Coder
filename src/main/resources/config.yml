@@ -1,0 +1,42 @@
+# =======================================================
+# = CodeDSL Configuration File
+# = Made By Firesmasher | Version 1.3.4
+# ======================================================
+
+# Enable the plugin
+enabled: true
+
+# File extensions to bind on
+file-extensions:
+  main: ".cd"
+  legacy: ".code"
+  old: ".cdsl"
+  custom: "YOUR_PREFERED_CUSTOM_FILE_EXTENSION_HERE"
+
+# Allow file reloading
+# Enables: /coder reload <file.cd> or /codedsl reload <file.cd>
+reloading-enabled: true
+
+# Script execution settings
+scripts:
+  # Auto-load scripts from startup
+  auto-load: true
+  
+  # Max script execution time (in seconds)
+  timeout: 30
+
+# Variable storage
+variables:
+  # Enable variable persistence
+  persistence-enabled: true
+  
+  # Auto-save interval (in seconds)
+  auto-save-interval: 60
+
+# Logging
+logging:
+  # Enable debug logging
+  debug: false
+  
+  # Log level (INFO, DEBUG, ERROR)
+  level: "INFO"
