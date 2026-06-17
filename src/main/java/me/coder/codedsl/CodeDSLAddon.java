@@ -37,7 +37,7 @@ public class CodeDSLAddon implements CoderAddon {
 
     @Override
     public String getVersion() {
-        return "1.3.4";
+        return "1.8.2";
     }
 
     @Override
