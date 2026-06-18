@@ -1,9 +1,9 @@
 package me.coder.codedsl;
 
 import me.coder.api.CoderAPI;
+import me.coder.codedsl.manager.PlaceholderManager;
 import org.bukkit.command.CommandSender;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -18,10 +18,12 @@ public class CodeDSLProcessor {
     private final File dataFolder;
     private final Map<String, String> variables = new HashMap<>();
     private final Map<String, String> obfuscatedVars = new HashMap<>();
+    private final PlaceholderManager placeholderManager;
 
     public CodeDSLProcessor(File dataFolder, CoderAPI api) {
         this.dataFolder = dataFolder;
         this.api = api;
+        this.placeholderManager = new PlaceholderManager(api, variables, obfuscatedVars);
         loadVariables();
     }
 
@@ -31,7 +33,9 @@ public class CodeDSLProcessor {
     public void executeScript(File scriptFile, CommandSender sender) {
         try {
             List<String> lines = Files.readAllLines(scriptFile.toPath());
+            api.log("[CodeDSL] Executing: " + scriptFile.getName());
             processLines(lines, sender);
+            api.log("[CodeDSL] Script execution complete!");
         } catch (Exception e) {
             api.logError("Error executing script: " + e.getMessage());
             sender.sendMessage("§cError executing CodeDSL script: " + e.getMessage());
@@ -63,7 +67,6 @@ public class CodeDSLProcessor {
                 }
                 if (variables.containsKey(varName)) {
                     api.log("[CodeDSL] Variable '" + varName + "': " + variables.get(varName));
-                    // Process indented block
                     i = processIndentedBlock(lines, i, originalLine, sender);
                 }
                 continue;
@@ -82,7 +85,6 @@ public class CodeDSLProcessor {
                     try {
                         String decoded = new String(Base64.getDecoder().decode(obfuscatedVars.get(varName)));
                         api.log("[CodeDSL] Obfuscated variable '" + varName + "': " + decoded);
-                        // Process indented block
                         i = processIndentedBlock(lines, i, originalLine, sender);
                     } catch (Exception e) {
                         api.log("[CodeDSL] Error decoding obfuscated variable: " + varName);
@@ -110,18 +112,43 @@ public class CodeDSLProcessor {
                 }
             }
 
-            // Handle console.log command
+            // Handle console.log command (including multi-line)
             else if (line.startsWith("console.log ")) {
                 String message = line.substring(12).trim();
+                
                 // Handle multi-line: console.log { ... }
                 if (message.startsWith("{")) {
-                    message = message.substring(1);
+                    StringBuilder fullMessage = new StringBuilder();
+                    message = message.substring(1).trim();
+                    
+                    // If closing brace on same line
                     if (message.endsWith("}")) {
-                        message = message.substring(0, message.length() - 1);
+                        message = message.substring(0, message.length() - 1).trim();
+                        fullMessage.append(message);
+                    } else {
+                        // Collect lines until closing brace
+                        fullMessage.append(message).append("\n");
+                        i++;
+                        while (i < lines.size()) {
+                            String nextLine = lines.get(i);
+                            String nextTrimmed = nextLine.trim();
+                            
+                            if (nextTrimmed.endsWith("}")) {
+                                fullMessage.append(nextTrimmed, 0, nextTrimmed.length() - 1).append("\n");
+                                break;
+                            } else {
+                                fullMessage.append(nextTrimmed).append("\n");
+                            }
+                            i++;
+                        }
                     }
+                    
+                    message = fullMessage.toString().trim();
                 } else if (message.startsWith("\"") && message.endsWith("\"")) {
+                    // Single line with quotes
                     message = message.substring(1, message.length() - 1);
                 }
+                
                 message = replacePlaceholders(message);
                 api.log(message);
             }
@@ -134,6 +161,125 @@ public class CodeDSLProcessor {
             // Handle obfuscated variable assignment
             else if (line.startsWith("obfuscatedVAR ")) {
                 parseVariable(line.substring(14), true);
+            }
+
+            // Handle delete variable
+            else if (line.startsWith("deleteVar ")) {
+                String varName = line.substring(10).trim();
+                if (varName.startsWith("\"") && varName.endsWith("\"")) {
+                    varName = varName.substring(1, varName.length() - 1);
+                }
+                if (variables.remove(varName) != null) {
+                    saveVariables();
+                    api.log("[CodeDSL] Variable deleted: " + varName);
+                }
+            }
+
+            // Handle delete obfuscated variable
+            else if (line.startsWith("deleteObfVar ")) {
+                String varName = line.substring(13).trim();
+                if (varName.startsWith("\"") && varName.endsWith("\"")) {
+                    varName = varName.substring(1, varName.length() - 1);
+                }
+                if (obfuscatedVars.remove(varName) != null) {
+                    saveObfuscatedVariables();
+                    api.log("[CodeDSL] Obfuscated variable deleted: " + varName);
+                }
+            }
+
+            // Handle delay (in ticks)
+            else if (line.startsWith("delay ")) {
+                try {
+                    String ticks = line.substring(6).trim();
+                    long delayTicks = Long.parseLong(ticks);
+                    Thread.sleep(delayTicks * 50);
+                    api.log("[CodeDSL] Delayed " + delayTicks + " ticks");
+                } catch (NumberFormatException | InterruptedException e) {
+                    api.logError("Error parsing delay: " + e.getMessage());
+                }
+            }
+
+            // Handle wait (by time units)
+            else if (line.startsWith("wait ")) {
+                String waitStr = line.substring(5).trim();
+                long delayMs = parseTimeUnit(waitStr);
+                if (delayMs > 0) {
+                    try {
+                        Thread.sleep(delayMs);
+                        api.log("[CodeDSL] Waited " + waitStr);
+                    } catch (InterruptedException e) {
+                        api.logError("Wait interrupted: " + e.getMessage());
+                    }
+                }
+            }
+
+            // Handle import statements
+            else if (line.startsWith("import ")) {
+                String importStr = line.substring(7).trim();
+                handleImport(importStr);
+            }
+
+            // Handle command definitions
+            else if (line.startsWith("command ")) {
+                String commandDef = line.substring(8).trim();
+                if (commandDef.endsWith(":")) {
+                    commandDef = commandDef.substring(0, commandDef.length() - 1).trim();
+                }
+                api.log("[CodeDSL] Command defined: " + commandDef + " (custom commands not yet fully implemented)");
+            }
+
+            // Handle run blocks
+            else if (line.startsWith("run ")) {
+                if (line.contains("{")) {
+                    String runContent = line.substring(4).trim();
+                    if (runContent.startsWith("{")) {
+                        runContent = runContent.substring(1);
+                        i = processRunBlock(lines, i, originalLine, sender, runContent);
+                    }
+                }
+            }
+
+            // Handle async blocks
+            else if (line.startsWith("async:")) {
+                i = processAsyncBlock(lines, i, originalLine, sender);
+            }
+
+            // Handle every loop
+            else if (line.startsWith("every ")) {
+                String everyContent = line.substring(6).trim();
+                if (everyContent.contains("{")) {
+                    String[] parts = everyContent.split("\\{");
+                    if (parts.length >= 1) {
+                        String timeStr = parts[0].trim();
+                        String timeValue = "";
+                        String timeUnit = "";
+                        for (int j = 0; j < timeStr.length(); j++) {
+                            char c = timeStr.charAt(j);
+                            if (Character.isDigit(c)) {
+                                timeValue += c;
+                            } else {
+                                timeUnit = timeStr.substring(j).trim();
+                                break;
+                            }
+                        }
+                        
+                        if (!timeValue.isEmpty() && !timeUnit.isEmpty()) {
+                            long delayMs = 0;
+                            if (timeUnit.equals("s")) {
+                                delayMs = Long.parseLong(timeValue) * 1000;
+                            } else if (timeUnit.equals("m")) {
+                                delayMs = Long.parseLong(timeValue) * 60000;
+                            } else if (timeUnit.equals("t")) {
+                                delayMs = Long.parseLong(timeValue) * 50;
+                            }
+                            
+                            if (delayMs > 0) {
+                                api.log("[CodeDSL] Started every loop: every " + timeValue + timeUnit);
+                                i = processEveryBlock(lines, i, originalLine, sender, delayMs);
+                            }
+                        }
+                    }
+                }
             }
 
             // Handle execute command
@@ -150,6 +296,42 @@ public class CodeDSLProcessor {
                 readFile(filepath);
             }
 
+            // Handle file write
+            else if (line.startsWith("fileWrite ")) {
+                String fileWriteContent = line.substring(10).trim();
+                if (fileWriteContent.contains("{")) {
+                    String[] parts = fileWriteContent.split("\\{", 2);
+                    if (parts.length == 2) {
+                        String filepath = parts[0].trim();
+                        String content = parts[1];
+                        
+                        // Collect lines until closing brace
+                        StringBuilder fileContent = new StringBuilder(content);
+                        i++;
+                        while (i < lines.size()) {
+                            String nextLine = lines.get(i);
+                            String nextTrimmed = nextLine.trim();
+                            
+                            if (nextTrimmed.endsWith("}")) {
+                                fileContent.append(nextTrimmed, 0, nextTrimmed.length() - 1);
+                                break;
+                            } else {
+                                fileContent.append(nextTrimmed).append("\n");
+                            }
+                            i++;
+                        }
+                        
+                        writeFile(filepath, fileContent.toString().trim());
+                    }
+                }
+            }
+
+            // Handle file delete
+            else if (line.startsWith("fileDel ")) {
+                String filepath = line.substring(8).trim();
+                deleteFile(filepath);
+            }
+
             // Handle if statements with indented blocks
             else if (line.startsWith("if ")) {
                 String condition = line.substring(3).trim();
@@ -157,14 +339,12 @@ public class CodeDSLProcessor {
                     condition = condition.substring(0, condition.length() - 1).trim();
                 }
                 
-                // Parse: var "name" = "value"
                 if (condition.contains(" = ")) {
                     String[] parts = condition.split(" = ");
                     if (parts.length >= 2) {
                         String varPart = parts[0].replace("var", "").trim();
                         String valuePart = parts[1].trim();
                         
-                        // Remove quotes
                         if (varPart.startsWith("\"") && varPart.endsWith("\"")) {
                             varPart = varPart.substring(1, varPart.length() - 1);
                         }
@@ -175,7 +355,6 @@ public class CodeDSLProcessor {
                         String actualValue = variables.get(varPart);
                         boolean conditionMet = actualValue != null && actualValue.equals(valuePart);
                         
-                        // Process if block
                         i = processIfElseBlock(lines, i, originalLine, sender, conditionMet);
                     }
                 }
@@ -194,25 +373,20 @@ public class CodeDSLProcessor {
             String line = lines.get(i);
             String trimmed = line.trim();
 
-            // Skip empty lines
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 i++;
                 continue;
             }
 
             int currentIndent = getIndentation(line);
-            
-            // If not indented more than parent, exit block
             if (currentIndent <= baseIndent) {
                 break;
             }
 
-            // Process indented line
             String cleanedLine = trimmed;
             
             if (cleanedLine.startsWith("console.log ")) {
                 String message = cleanedLine.substring(12).trim();
-                // Extract string from quotes
                 if (message.startsWith("\"") && message.endsWith("\"")) {
                     message = message.substring(1, message.length() - 1);
                 } else if (message.startsWith("{")) {
@@ -259,20 +433,16 @@ public class CodeDSLProcessor {
             String line = lines.get(i);
             String trimmed = line.trim();
 
-            // Skip empty lines
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 i++;
                 continue;
             }
 
             int currentIndent = getIndentation(line);
-            
-            // If not indented more than parent, exit block
             if (currentIndent <= baseIndent) {
                 break;
             }
 
-            // Check for else:
             if (trimmed.startsWith("else:") || trimmed.equals("else:")) {
                 inIfBlock = false;
                 inElseBlock = true;
@@ -280,7 +450,6 @@ public class CodeDSLProcessor {
                 continue;
             }
 
-            // Process lines based on condition
             if ((inIfBlock && conditionMet) || (inElseBlock && !conditionMet)) {
                 String cleanedLine = trimmed;
                 
@@ -321,6 +490,68 @@ public class CodeDSLProcessor {
     }
 
     /**
+     * Process every block (repeating loop)
+     */
+    private int processEveryBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, long delayMs) {
+        int baseIndent = getIndentation(parentLine);
+        int i = startIndex + 1;
+        List<String> blockLines = new ArrayList<>();
+
+        while (i < lines.size()) {
+            String line = lines.get(i);
+            String trimmed = line.trim();
+
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            int currentIndent = getIndentation(line);
+            if (currentIndent <= baseIndent) {
+                break;
+            }
+
+            blockLines.add(trimmed);
+            i++;
+        }
+
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(delayMs);
+                    for (String blockLine : blockLines) {
+                        if (blockLine.startsWith("broadcast ")) {
+                            String message = extractString(blockLine.substring(10));
+                            api.broadcast(replacePlaceholders(message));
+                        } else if (blockLine.startsWith("console.log ")) {
+                            String message = blockLine.substring(12).trim();
+                            if (message.startsWith("\"") && message.endsWith("\"")) {
+                                message = message.substring(1, message.length() - 1);
+                            }
+                            message = replacePlaceholders(message);
+                            api.log(message);
+                        } else if (blockLine.startsWith("send ")) {
+                            String[] parts = blockLine.substring(5).split(" to ");
+                            if (parts.length == 2) {
+                                String message = extractString(parts[0]);
+                                String playerName = parts[1].trim();
+                                var player = org.bukkit.Bukkit.getPlayer(playerName);
+                                if (player != null) {
+                                    player.sendMessage(replacePlaceholders(message));
+                                }
+                            }
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
+
+        return i - 1;
+    }
+
+    /**
      * Parse variable assignment
      */
     private void parseVariable(String statement, boolean obfuscated) {
@@ -330,7 +561,6 @@ public class CodeDSLProcessor {
             String value = parts[1].trim();
             
             if (obfuscated) {
-                // Simple obfuscation (Base64)
                 String obf = Base64.getEncoder().encodeToString(value.getBytes());
                 obfuscatedVars.put(name, obf);
                 saveObfuscatedVariables();
@@ -356,25 +586,10 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Replace variable placeholders
+     * Replace all placeholders using PlaceholderManager
      */
     private String replacePlaceholders(String text) {
-        // Replace plain variables
-        for (Map.Entry<String, String> entry : variables.entrySet()) {
-            text = text.replace("{var(" + entry.getKey() + ")}", entry.getValue());
-        }
-        
-        // Replace obfuscated variables
-        for (Map.Entry<String, String> entry : obfuscatedVars.entrySet()) {
-            try {
-                String decoded = new String(Base64.getDecoder().decode(entry.getValue()));
-                text = text.replace("{obfvar(" + entry.getKey() + ")}", decoded);
-            } catch (Exception e) {
-                // Ignore decode errors
-            }
-        }
-        
-        return text;
+        return placeholderManager.replacePlaceholders(text);
     }
 
     /**
@@ -391,34 +606,6 @@ public class CodeDSLProcessor {
             }
         } catch (Exception e) {
             api.logError("Error reading file: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Process if statements
-     */
-    private void processIfStatement(String line, CommandSender sender) {
-        // Basic if statement handling
-        // Example: if var "name" = "value":
-        if (line.contains(" = ")) {
-            String[] parts = line.split(" = ");
-            if (parts.length >= 2) {
-                String varPart = parts[0].replace("if var", "").replace("if", "").trim();
-                String valuePart = parts[1].replace(":", "").trim();
-                
-                // Remove quotes
-                if (varPart.startsWith("\"") && varPart.endsWith("\"")) {
-                    varPart = varPart.substring(1, varPart.length() - 1);
-                }
-                if (valuePart.startsWith("\"") && valuePart.endsWith("\"")) {
-                    valuePart = valuePart.substring(1, valuePart.length() - 1);
-                }
-                
-                String actualValue = variables.get(varPart);
-                if (actualValue != null && actualValue.equals(valuePart)) {
-                    api.log("[CodeDSL] If condition matched: " + varPart + " = " + valuePart);
-                }
-            }
         }
     }
 
@@ -490,10 +677,202 @@ public class CodeDSLProcessor {
                 sb.append(entry.getKey()).append("=").append(entry.getValue()).append("\n");
             }
             Files.write(obfFile.toPath(), sb.toString().getBytes());
-        } catch (IOException e) {
-            api.logError("Error Saving Obfuscated Variable: " + e.getMessage());
+        } catch (Exception e) {
+            api.logError("Error saving obfuscated variables: " + e.getMessage());
         }
     }
+
+    /**
+     * Write file contents
+     */
+    private void writeFile(String filepath, String content) {
+        try {
+            File file = new File(filepath);
+            file.getParentFile().mkdirs();
+            Files.write(file.toPath(), content.getBytes());
+            api.log("[CodeDSL] File written: " + filepath);
+        } catch (Exception e) {
+            api.logError("Error writing file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Delete file
+     */
+    private void deleteFile(String filepath) {
+        try {
+            File file = new File(filepath);
+            if (file.delete()) {
+                api.log("[CodeDSL] File deleted: " + filepath);
+            } else {
+                api.logError("Could not delete file: " + filepath);
+            }
+        } catch (Exception e) {
+            api.logError("Error deleting file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Parse time unit (1s, 5m, 10t)
+     */
+    private long parseTimeUnit(String timeStr) {
+        String timeValue = "";
+        String timeUnit = "";
+        
+        for (int j = 0; j < timeStr.length(); j++) {
+            char c = timeStr.charAt(j);
+            if (Character.isDigit(c)) {
+                timeValue += c;
+            } else {
+                timeUnit = timeStr.substring(j).trim();
+                break;
+            }
+        }
+        
+        if (timeValue.isEmpty() || timeUnit.isEmpty()) {
+            return -1;
+        }
+        
+        long value = Long.parseLong(timeValue);
+        if (timeUnit.equals("s")) {
+            return value * 1000;
+        } else if (timeUnit.equals("m")) {
+            return value * 60000;
+        } else if (timeUnit.equals("t")) {
+            return value * 50;
+        }
+        return -1;
+    }
+
+    /**
+     * Handle import statements
+     */
+    private void handleImport(String importStr) {
+        if (importStr.equalsIgnoreCase("async")) {
+            api.log("[CodeDSL] Async library imported");
+        } else if (importStr.equalsIgnoreCase("Connection")) {
+            api.log("[CodeDSL] Connection library imported");
+        } else if (importStr.equalsIgnoreCase("bukkit")) {
+            api.log("[CodeDSL] Bukkit library imported");
+        } else {
+            api.log("[CodeDSL] Unknown import: " + importStr);
+        }
+    }
+
+    /**
+     * Process run block { ... }
+     */
+    private int processRunBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, String firstContent) {
+        int baseIndent = getIndentation(parentLine);
+        int i = startIndex + 1;
+        List<String> runLines = new ArrayList<>();
+        
+        if (firstContent.length() > 0 && !firstContent.equals("{")) {
+            runLines.add(firstContent.trim());
+        }
+
+        while (i < lines.size()) {
+            String line = lines.get(i);
+            String trimmed = line.trim();
+
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            if (trimmed.endsWith("}")) {
+                runLines.add(trimmed.substring(0, trimmed.length() - 1).trim());
+                break;
+            }
+
+            runLines.add(trimmed);
+            i++;
+        }
+
+        // Execute all lines in run block
+        for (String runLine : runLines) {
+            if (runLine.startsWith("broadcast ")) {
+                String message = extractString(runLine.substring(10));
+                api.broadcast(replacePlaceholders(message));
+            } else if (runLine.startsWith("send ")) {
+                String[] parts = runLine.substring(5).split(" to ");
+                if (parts.length == 2) {
+                    String message = extractString(parts[0]);
+                    String playerName = parts[1].trim();
+                    var player = org.bukkit.Bukkit.getPlayer(playerName);
+                    if (player != null) {
+                        player.sendMessage(replacePlaceholders(message));
+                    }
+                }
+            } else if (runLine.startsWith("console.log ")) {
+                String message = runLine.substring(12).trim();
+                if (message.startsWith("\"") && message.endsWith("\"")) {
+                    message = message.substring(1, message.length() - 1);
+                }
+                message = replacePlaceholders(message);
+                api.log(message);
+            }
+        }
+
+        return i;
+    }
+
+    /**
+     * Process async block
+     */
+    private int processAsyncBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender) {
+        int baseIndent = getIndentation(parentLine);
+        int i = startIndex + 1;
+        List<String> asyncLines = new ArrayList<>();
+
+        while (i < lines.size()) {
+            String line = lines.get(i);
+            String trimmed = line.trim();
+
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            int currentIndent = getIndentation(line);
+            if (currentIndent <= baseIndent) {
+                break;
+            }
+
+            asyncLines.add(trimmed);
+            i++;
+        }
+
+        // Execute async block in new thread
+        new Thread(() -> {
+            for (String asyncLine : asyncLines) {
+                if (asyncLine.startsWith("broadcast ")) {
+                    String message = extractString(asyncLine.substring(10));
+                    api.broadcast(replacePlaceholders(message));
+                } else if (asyncLine.startsWith("send ")) {
+                    String[] parts = asyncLine.substring(5).split(" to ");
+                    if (parts.length == 2) {
+                        String message = extractString(parts[0]);
+                        String playerName = parts[1].trim();
+                        var player = org.bukkit.Bukkit.getPlayer(playerName);
+                        if (player != null) {
+                            player.sendMessage(replacePlaceholders(message));
+                        }
+                    }
+                } else if (asyncLine.startsWith("console.log ")) {
+                    String message = asyncLine.substring(12).trim();
+                    if (message.startsWith("\"") && message.endsWith("\"")) {
+                        message = message.substring(1, message.length() - 1);
+                    }
+                    message = replacePlaceholders(message);
+                    api.log(message);
+                }
+            }
+        }).start();
+
+        return i - 1;
+    }
+
     /**
      * Get indentation level of a line
      */

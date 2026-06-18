@@ -4,7 +4,7 @@
   <groupId>me.coder.codedsl</groupId>
   <artifactId>CodeDSL</artifactId>
   <name>CodeDSL</name>
-  <version>1.8.2</version>
+  <version>1.9.5</version>
   <description>A Domain Specific Language addon for the Coder plugin</description>
   <build>
     <plugins>

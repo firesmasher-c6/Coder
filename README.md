@@ -1,4 +1,4 @@
-# CodeDSL v1.8.2
+# CodeDSL v1.3.4
 
 A Domain Specific Language (DSL) addon for the **Coder** Minecraft plugin that allows you to write scripts in an easy-to-learn custom syntax.
 
@@ -15,7 +15,7 @@ A Domain Specific Language (DSL) addon for the **Coder** Minecraft plugin that a
 
 ## Installation
 
-1. Place `CodeDSL-1.8.2.jar` in your `plugins/` folder
+1. Place `CodeDSL-1.3.4.jar` in your `plugins/` folder
 
 2. Server automatically creates:
 ```
@@ -317,6 +317,6 @@ Licensed under **MIT**
 
 ---
 
-**Version:** 1.8.2  
+**Version:** 1.3.4  
 **Last Updated:** 2026
 **Status:** Active Development

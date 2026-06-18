@@ -40,3 +40,7 @@ logging:
   
   # Log level (INFO, DEBUG, ERROR)
   level: "INFO"
+
+# Placeholders
+placeholders:
+  enabled: true

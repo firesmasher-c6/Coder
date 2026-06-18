@@ -12,36 +12,31 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages CodeDSL scripts loading, memory caching, and dynamic runtime command parsing.
- */
 public class ScriptManager {
 
     private final File dataFolder;
     private final CoderAPI api;
     private final CodeDSLProcessor processor;
     private final CommandParser commandParser;
-    private final Map<String, CodeDSLProcessor> loadedScripts = new HashMap<>();
-    private CodeDSLAddon addonReference; // Added to read config extensions dynamically
+    private final Map<String, CodeDSLProcessor> loadedScripts = new ConcurrentHashMap<>();
+    private final Map<String, Object> commandHandlers = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> scriptCommandMap = new ConcurrentHashMap<>();
+    private CodeDSLAddon addonReference;
 
     public ScriptManager(File dataFolder, CoderAPI api) {
         this.dataFolder = dataFolder;
         this.api = api;
-        
         File scriptsFolder = new File(dataFolder, "scripts");
         this.processor = new CodeDSLProcessor(dataFolder, api);
         this.commandParser = new CommandParser(api, scriptsFolder);
     }
 
-    // Setter so Addon can pass itself after initialization
     public void setAddonReference(CodeDSLAddon addon) {
         this.addonReference = addon;
     }
 
-    /**
-     * Run a CodeDSL script directly from the local files storage directory
-     */
     public void runScript(String fileName, CommandSender sender) {
         File scriptsDir = new File(dataFolder, "scripts");
         File scriptFile = new File(scriptsDir, fileName);
@@ -58,11 +53,7 @@ public class ScriptManager {
 
         try {
             api.sendSuccess(sender, "[CodeDSL] Executing: " + fileName);
-            
-            // Parse commands and cache inside script registries
             parseAndRegisterScriptCommands(scriptFile);
-            
-            // Hand over execution pipeline to your primary processor logic
             processor.executeScript(scriptFile, sender);
         } catch (Exception e) {
             api.sendError(sender, "Error executing CodeDSL script: " + e.getMessage());
@@ -70,17 +61,11 @@ public class ScriptManager {
         }
     }
 
-    /**
-     * Reload a CodeDSL script and refresh its command pipelines
-     */
     public void reloadScript(String fileName, CommandSender sender) {
         runScript(fileName, sender);
         api.sendSuccess(sender, "[CodeDSL] Script reloaded: " + fileName);
     }
 
-    /**
-     * Load a script to memory and map its structures
-     */
     public void loadScript(String fileName, CommandSender sender) {
         File scriptsDir = new File(dataFolder, "scripts");
         File scriptFile = new File(scriptsDir, fileName);
@@ -91,10 +76,8 @@ public class ScriptManager {
         }
 
         try {
-            // Read internal syntax declarations and register any command lines found inside
             commandParser.parseCommandDefinitions(scriptFile);
             parseAndRegisterScriptCommands(scriptFile);
-            
             loadedScripts.put(fileName, processor);
             api.sendSuccess(sender, "[CodeDSL] Script loaded to memory: " + fileName);
         } catch (Exception e) {
@@ -103,9 +86,6 @@ public class ScriptManager {
         }
     }
 
-    /**
-     * Loads a script into runtime registries quietly without printing individual verification logs.
-     */
     public void loadScriptSilent(String fileName, CommandSender sender) throws Exception {
         File scriptsDir = new File(dataFolder, "scripts");
         File scriptFile = new File(scriptsDir, fileName);
@@ -114,17 +94,13 @@ public class ScriptManager {
             throw new java.io.FileNotFoundException("Script file does not exist");
         }
 
-        // We make sure your CommandParser handles a quiet registration call during startup boot loop
         commandParser.parseCommandDefinitionsSilent(scriptFile);
         parseAndRegisterScriptCommands(scriptFile);
-        
         loadedScripts.put(fileName, processor);
     }
 
-    /**
-     * Unload a script from memory
-     */
     public void unloadScript(String fileName, CommandSender sender) {
+        unloadScriptHandlers(fileName);
         if (loadedScripts.remove(fileName) != null) {
             api.sendSuccess(sender, "[CodeDSL] Script unloaded: " + fileName);
         } else {
@@ -132,9 +108,6 @@ public class ScriptManager {
         }
     }
 
-    /**
-     * Scans structural configuration files looking for raw DSL syntax declarations to inject
-     */
     private void parseAndRegisterScriptCommands(File file) {
         try {
             List<String> lines = Files.readAllLines(file.toPath());
@@ -145,10 +118,8 @@ public class ScriptManager {
                 String trimmed = line.trim();
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
 
-                // Match layout pattern: command /example
                 if (trimmed.startsWith("command /")) {
                     detectedCommandName = trimmed.substring(9).trim();
-                    // Strip off arguments or brackets if any exist on that declaration line
                     if (detectedCommandName.contains(" ")) {
                         detectedCommandName = detectedCommandName.split(" ")[0];
                     }
@@ -158,17 +129,17 @@ public class ScriptManager {
                     continue;
                 }
 
-                // Match permission assignment inside declaration nodes
                 if (detectedCommandName != null && trimmed.startsWith("permission:")) {
                     detectedPermission = trimmed.substring(11).trim();
                     continue;
                 }
 
-                // When trigger node initializes, compile structural hook into server pipeline
                 if (detectedCommandName != null && trimmed.startsWith("trigger:")) {
                     final String finalizedCommand = detectedCommandName;
                     final String finalizedPermission = detectedPermission;
                     final File scriptTargetFile = file;
+
+                    registerCommandHandler(finalizedCommand, scriptTargetFile, file.getName());
 
                     DynamicScriptCommand.register(
                         CodeDSLPlugin.getInstance(),
@@ -177,7 +148,7 @@ public class ScriptManager {
                         finalizedPermission,
                         (commandSender, args) -> {
                             try {
-                                processor.executeScript(scriptTargetFile, commandSender);
+                                executeCommandHandler(finalizedCommand, commandSender);
                             } catch (Exception ex) {
                                 commandSender.sendMessage("§cExecution failure inside CodeDSL Processor processing loop.");
                                 ex.printStackTrace();
@@ -186,7 +157,6 @@ public class ScriptManager {
                         api
                     );
 
-                    // Reset variables for subsequent command entries inside the same file
                     detectedCommandName = null;
                     detectedPermission = null;
                 }
@@ -194,6 +164,56 @@ public class ScriptManager {
         } catch (Exception e) {
             api.logError("Failed to parse script syntax architecture mapping for " + file.getName() + ": " + e.getMessage());
         }
+    }
+
+    public void registerCommandHandler(String commandName, Object handler, String scriptFile) {
+        String key = commandName.toLowerCase();
+        commandHandlers.put(key, handler);
+        scriptCommandMap.computeIfAbsent(scriptFile, k -> new ArrayList<>()).add(key);
+        if (api != null) {
+            api.log("[CodeDSL] Registered command handler: /" + key);
+        }
+    }
+
+    public boolean executeCommandHandler(String commandName, CommandSender sender) {
+        String key = commandName.toLowerCase();
+        Object handler = commandHandlers.get(key);
+
+        if (handler == null) {
+            sender.sendMessage("§cCommand handler not found: /" + commandName);
+            return false;
+        }
+
+        try {
+            if (handler instanceof File) {
+                processor.executeScript((File) handler, sender);
+            }
+            return true;
+        } catch (Exception e) {
+            sender.sendMessage("§cError executing command /" + commandName + ": " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void unloadScriptHandlers(String scriptFile) {
+        List<String> commands = scriptCommandMap.remove(scriptFile);
+        if (commands != null) {
+            for (String cmd : commands) {
+                commandHandlers.remove(cmd);
+                if (api != null) {
+                    api.log("[CodeDSL] Unregistered command handler: /" + cmd);
+                }
+            }
+        }
+    }
+
+    public boolean hasCommandHandler(String commandName) {
+        return commandHandlers.containsKey(commandName.toLowerCase());
+    }
+
+    public Set<String> getRegisteredCommands() {
+        return new HashSet<>(commandHandlers.keySet());
     }
 
     private boolean isValidCodeDSLFile(String fileName) {
@@ -241,9 +261,17 @@ public class ScriptManager {
     }
 
     public void unloadAllScripts() {
+        commandHandlers.clear();
+        scriptCommandMap.clear();
         loadedScripts.clear();
         commandParser.unregisterAllCommands();
-        api.log("All CodeDSL scripts unloaded");
+        if (api != null) {
+            api.log("All CodeDSL scripts unloaded");
+        }
+    }
+
+    public Collection<String> getLoadedScripts() {
+        return loadedScripts.keySet();
     }
 
     public CommandParser getCommandParser() {

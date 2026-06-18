@@ -15,10 +15,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * CodeDSL - A Domain Specific Language addon for the Coder plugin
- * Allows users to write scripts in a custom DSL (.cd or .code files)
- */
 public class CodeDSLAddon implements CoderAddon {
 
     private ScriptManager scriptManager;
@@ -26,9 +22,9 @@ public class CodeDSLAddon implements CoderAddon {
     private File dataFolder;
     private YamlConfiguration addonConfig;
     
-    // Core file storage references inside the dedicated variables folder
     private File variablesStorageFile;
     private File variablesObfFile;
+    private YamlConfiguration variablesConfig;
 
     @Override
     public String getName() {
@@ -37,7 +33,7 @@ public class CodeDSLAddon implements CoderAddon {
 
     @Override
     public String getVersion() {
-        return "1.8.2";
+        return "1.9.5";
     }
 
     @Override
@@ -53,48 +49,58 @@ public class CodeDSLAddon implements CoderAddon {
     @Override
     public void onEnable() {
         try {
-            // Get API instance
             api = CoderAPI.getInstance();
             
-            // Extract and load config.yml contents into memory
+            // CRITICAL FIX: Initialize dataFolder FIRST and verify it exists
+            CodeDSLPlugin pluginInstance = CodeDSLPlugin.getInstance();
+            if (pluginInstance == null) {
+                throw new IllegalStateException("CodeDSLPlugin instance is not initialized");
+            }
+            
+            File pluginDataFolder = pluginInstance.getDataFolder();
+            if (pluginDataFolder == null) {
+                throw new IllegalStateException("Plugin data folder is null");
+            }
+            
+            dataFolder = new File(pluginDataFolder, "addons/CodeDSL");
+            if (!dataFolder.exists()) {
+                if (!dataFolder.mkdirs()) {
+                    throw new IllegalStateException("Failed to create data folder: " + dataFolder.getAbsolutePath());
+                }
+            }
+            
             setupConfig();
 
-            // Respect global toggle from config
             if (addonConfig != null && !addonConfig.getBoolean("enabled", true)) {
                 if (api != null) api.log("CodeDSL is disabled in config.yml. Skipping initialization.");
                 return;
             }
             
-            // Create data folders, sub-folders, and copy packaged example assets
             setupFolders();
-            
-            // Initialize script manager
             scriptManager = new ScriptManager(dataFolder, api);
-            scriptManager.setAddonReference(this); // Passes reference down for dynamic config lookup
-            
-            // Automatically loop and load script files only if configured to do so
+            scriptManager.setAddonReference(this);
             loadAllScriptsOnStartup();
             
-            // Register your command interceptor listener to catch cross-plugin /coder run events
             if (Bukkit.getPluginManager().getPlugin("Coder") != null) {
                 Bukkit.getPluginManager().registerEvents(
                     new CommandInterceptor(api, scriptManager.getCommandParser(), scriptManager, scriptManager.getProcessor(), this),
                     Bukkit.getPluginManager().getPlugin("Coder")
                 );
             } else {
-                api.logError("Could not register CommandInterceptor: Main plugin 'Coder' was not found!");
+                if (api != null) api.logError("Could not register CommandInterceptor: Main plugin 'Coder' was not found!");
             }
             
-            // Register commands log hook
             registerCommands();
-            
-            // Log startup
-            api.log("CodeDSL v" + getVersion() + " enabled!");
-            api.log("Data folder: " + dataFolder.getAbsolutePath());
+            if (api != null) {
+                api.log("CodeDSL v" + getVersion() + " enabled!");
+                api.log("Data folder: " + dataFolder.getAbsolutePath());
+            }
             
         } catch (Exception e) {
             if (api != null) {
                 api.logError("Failed to enable CodeDSL: " + e.getMessage());
+            } else {
+                System.err.println("[CodeDSL] CRITICAL ERROR: " + e.getMessage());
             }
             e.printStackTrace();
         }
@@ -102,7 +108,6 @@ public class CodeDSLAddon implements CoderAddon {
 
     @Override
     public void onDisable() {
-        // Cleanup
         if (scriptManager != null) {
             scriptManager.unloadAllScripts();
         }
@@ -111,11 +116,56 @@ public class CodeDSLAddon implements CoderAddon {
         }
     }
 
-    /**
-     * Finds and loads script files automatically on enable if enabled in config.yml.
-     */
+    private void setupFolders() {
+        if (dataFolder == null) {
+            throw new IllegalStateException("Data folder is not initialized");
+        }
+        
+        try {
+            File scriptsDir = new File(dataFolder, "scripts");
+            if (!scriptsDir.exists()) {
+                if (!scriptsDir.mkdirs()) {
+                    if (api != null) api.logError("Failed to create scripts directory");
+                }
+            }
+            
+            File configDir = new File(dataFolder, "config");
+            if (!configDir.exists()) {
+                if (!configDir.mkdirs()) {
+                    if (api != null) api.logError("Failed to create config directory");
+                }
+            }
+            
+            // Initialize variables storage files
+            variablesStorageFile = new File(dataFolder, "variables.yml");
+            variablesObfFile = new File(dataFolder, "variables.obf");
+            
+            // Create variables files if they don't exist
+            if (!variablesStorageFile.exists()) {
+                variablesStorageFile.createNewFile();
+                variablesConfig = new YamlConfiguration();
+                variablesConfig.save(variablesStorageFile);
+            } else {
+                variablesConfig = YamlConfiguration.loadConfiguration(variablesStorageFile);
+            }
+            
+            if (!variablesObfFile.exists()) {
+                variablesObfFile.createNewFile();
+            }
+            
+            if (api != null) {
+                api.log("Variables storage initialized: " + variablesStorageFile.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            if (api != null) {
+                api.logError("Error setting up folders: " + e.getMessage());
+            }
+            e.printStackTrace();
+        }
+    }
+
     private void loadAllScriptsOnStartup() {
-        // Read configuration value 'scripts.auto-load' (Defaulting to false as defined in your config)
         if (addonConfig == null || !addonConfig.getBoolean("scripts.auto-load", false)) {
             if (api != null) api.log("[CodeDSL] Script auto-load is disabled in config.yml.");
             return;
@@ -129,7 +179,6 @@ public class CodeDSLAddon implements CoderAddon {
         File[] files = scriptsDir.listFiles();
         if (files == null) return;
 
-        // Fetch user-defined syntax extensions dynamically from config slots
         String mainExt = addonConfig.getString("file-extensions.main", ".cd").toLowerCase();
         String legacyExt = addonConfig.getString("file-extensions.legacy", ".code").toLowerCase();
         String oldExt = addonConfig.getString("file-extensions.old", ".cdsl").toLowerCase();
@@ -143,7 +192,6 @@ public class CodeDSLAddon implements CoderAddon {
                 String name = file.getName().toLowerCase();
                 boolean matches = name.endsWith(mainExt) || name.endsWith(legacyExt) || name.endsWith(oldExt);
                 
-                // Safety Guard: Evaluate custom string entry to make sure it's valid
                 if (!matches && !customExt.isEmpty() 
                         && !customExt.equals("your_prefered_custom_file_extension_here") 
                         && customExt.startsWith(".")) {
@@ -152,7 +200,6 @@ public class CodeDSLAddon implements CoderAddon {
 
                 if (matches) {
                     try {
-                        // Pass false to loadScript to keep it completely silent during boot up
                         scriptManager.loadScriptSilent(file.getName(), Bukkit.getConsoleSender());
                         loadedScripts.add(file.getName());
                     } catch (Exception e) {
@@ -162,175 +209,103 @@ public class CodeDSLAddon implements CoderAddon {
             }
         }
         
-        // Warning-free color formatting using explicit color tokens directly to the console sender
         ConsoleCommandSender console = Bukkit.getConsoleSender();
         String g = "§a";
         String r = "§c";
         
-        console.sendMessage(g + "======== CodeDSL ========");
+        console.sendMessage(g + "----------------< CodeDSL >----------------");
         console.sendMessage(g + "scripts loaded:");
         if (loadedScripts.isEmpty()) {
-            console.sendMessage(g + "   None");
+            console.sendMessage(g + "   N/A");
         } else {
             for (String script : loadedScripts) {
-                console.sendMessage(g + "   - " + script);
+                console.sendMessage(g + "   ✓ " + script);
             }
         }
-        console.sendMessage("");
-        
-        console.sendMessage(g + "encountered errors:");
+        console.sendMessage(g + "errors encountered:");
         if (encounteredErrors.isEmpty()) {
-            console.sendMessage(g + "   None");
+            console.sendMessage(g + "   N/A");
         } else {
             for (String error : encounteredErrors) {
-                console.sendMessage(r + "   - " + error);
+                console.sendMessage(r + "   ✗ " + error);
             }
         }
-        console.sendMessage(g + "=========================");
+        console.sendMessage(g + "-----------------------------------------");
     }
 
-    /**
-     * Extracts config.yml from jar resources to /plugins/CodeDSL/config.yml and loads it.
-     */
-    private void setupConfig() {
-        File configFolder = new File(Bukkit.getServer().getPluginsFolder(), "CodeDSL");
-        if (!configFolder.exists()) {
-            configFolder.mkdirs();
+    private void registerCommands() {
+        if (api != null) {
+            api.log("CodeDSL addon is ready for command registration");
         }
-        
-        File configFile = new File(configFolder, "config.yml");
-        if (!configFile.exists()) {
-            exportResource("config.yml", configFile);
-            if (api != null) {
-                api.log("Default config.yml exported to /plugins/CodeDSL/");
-            }
-        }
-
-        // Parse flat config structure directly into a readable Bukkit YamlConfiguration memory instance
-        this.addonConfig = YamlConfiguration.loadConfiguration(configFile);
     }
 
-    /**
-     * Setup all required folders and export packaged resource examples
-     */
-    private void setupFolders() {
-        dataFolder = new File(Bukkit.getServer().getPluginsFolder(), "Coder/CodeDSL");
-        
-        if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
+    private void setupConfig() throws Exception {
+        if (dataFolder == null) {
+            throw new IllegalStateException("Data folder is null. setupConfig() called before dataFolder initialization");
         }
-        
-        // 1. Create scripts directory
-        new File(dataFolder, "scripts").mkdirs();
-        
-        // 2. Create examples directory
-        File examplesDir = new File(dataFolder, "examples");
-        examplesDir.mkdirs();
-        
-        // 3. Define and create the variables subdirectory path
-        File variablesDir = new File(dataFolder, "variables");
-        variablesDir.mkdirs();
-        
-        // 4. Bind the flat data files INSIDE the variables subdirectory instead of root!
-        variablesStorageFile = new File(variablesDir, "variables.storage");
-        variablesObfFile = new File(variablesDir, "variables.obf");
         
         try {
-            if (!variablesStorageFile.exists()) variablesStorageFile.createNewFile();
-            if (!variablesObfFile.exists()) variablesObfFile.createNewFile();
-        } catch (Exception e) {
-            if (api != null) api.logError("Could not initialize variable data files: " + e.getMessage());
-        }
-
-        if (api != null) {
-            api.log("CodeDSL folders verified at: " + dataFolder.getAbsolutePath());
-        }
-
-        // Project resource files matching directory mapping
-        String[] exampleFiles = {
-            "command.cd",
-            "EXAMPLES.cd",
-            "readingFiles.cd",
-            "StoringVariables.cd"
-        };
-
-        // Dynamically migrate all project script templates into /plugins/Coder/CodeDSL/examples/
-        for (String fileName : exampleFiles) {
-            File targetFile = new File(examplesDir, fileName);
-            if (!targetFile.exists()) {
-                exportResource("examples/" + fileName, targetFile);
-            }
-        }
-    }
-
-    /**
-     * Extracts an embedded resource file from the JAR out to a physical destination file path.
-     */
-    private void exportResource(String resourcePath, File destinationFile) {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
-            if (in == null) {
-                if (api != null) {
-                    api.log("Could not find source resource inside jar: " + resourcePath);
-                }
-                return;
-            }
-
-            try (OutputStream out = new FileOutputStream(destinationFile)) {
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
+            File configFile = new File(dataFolder, "config.yml");
+            
+            if (!configFile.exists()) {
+                try (InputStream in = CodeDSLAddon.class.getResourceAsStream("/config.yml");
+                     OutputStream out = new FileOutputStream(configFile)) {
+                    
+                    if (in != null) {
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = in.read(buffer)) > 0) {
+                            out.write(buffer, 0, length);
+                        }
+                        if (api != null) api.log("Default config.yml created");
+                    } else {
+                        if (api != null) api.logError("Could not find default config.yml in resources");
+                    }
                 }
             }
+            
+            addonConfig = YamlConfiguration.loadConfiguration(configFile);
+            
         } catch (Exception e) {
             if (api != null) {
-                api.logError("Failed to extract resource asset '" + resourcePath + "': " + e.getMessage());
+                api.logError("Failed to setup configuration: " + e.getMessage());
             }
-            e.printStackTrace();
+            throw new Exception("Configuration setup failed", e);
         }
     }
 
-    /**
-     * Register commands
-     */
-    private void registerCommands() {
-        org.bukkit.command.PluginCommand cmd = Bukkit.getPluginCommand("codedsl");
-        if (cmd != null) {
-            cmd.setExecutor((sender, command, label, args) -> {
-                if (args.length > 0 && args[0].equalsIgnoreCase("configreload")) {
-                    if (!sender.hasPermission("codedsl.admin")) {
-                        sender.sendMessage("§cNo permission.");
-                        return true;
+    public void reloadConfig() {
+        if (dataFolder != null) {
+            try {
+                File configFile = new File(dataFolder, "config.yml");
+                if (configFile.exists()) {
+                    addonConfig = YamlConfiguration.loadConfiguration(configFile);
+                    if (api != null) {
+                        api.log("Configuration reloaded successfully");
                     }
-                    
-                    // Reload the config from disk
-                    File configFile = new File(Bukkit.getServer().getPluginsFolder(), "CodeDSL/config.yml");
-                    this.addonConfig = YamlConfiguration.loadConfiguration(configFile);
-                    
-                    sender.sendMessage("§a[CodeDSL] Config reloaded successfully!");
-                    return true;
                 }
-                
-                sender.sendMessage("§cUsage: /codedsl configreload");
-                return true;
-            });
-        }
-        
-        if (api != null) {
-            api.log("CodeDSL commands registered via bootstrap layer.");
+            } catch (Exception e) {
+                if (api != null) {
+                    api.logError("Failed to reload configuration: " + e.getMessage());
+                }
+            }
         }
     }
 
-    public YamlConfiguration getAddonConfig() {
-        return addonConfig;
+    public File getDataFolder() {
+        return dataFolder;
     }
 
     public ScriptManager getScriptManager() {
         return scriptManager;
     }
 
-    public File getDataFolder() {
-        return dataFolder;
+    public CoderAPI getAPI() {
+        return api;
+    }
+
+    public YamlConfiguration getAddonConfig() {
+        return addonConfig;
     }
 
     public File getVariablesStorageFile() {
@@ -341,7 +316,19 @@ public class CodeDSLAddon implements CoderAddon {
         return variablesObfFile;
     }
 
-    public CoderAPI getAPI() {
-        return api;
+    public YamlConfiguration getVariablesConfig() {
+        return variablesConfig;
+    }
+
+    public void saveVariablesConfig() {
+        try {
+            if (variablesConfig != null && variablesStorageFile != null) {
+                variablesConfig.save(variablesStorageFile);
+            }
+        } catch (Exception e) {
+            if (api != null) {
+                api.logError("Failed to save variables config: " + e.getMessage());
+            }
+        }
     }
 }
