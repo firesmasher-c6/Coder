@@ -1,14 +1,14 @@
 name: Coder
-version: 1.4.2
+version: 1.7.4
 main: me.coder.CoderPlugin
 api-version: '1.21'
 
-description: Execute Python, Lua, and Java scripts on your Minecraft server
+description: Execute Python, Lua, and Java scripts on your Minecraft server with version checking and auto-updates
 
 commands:
   coder:
-    description: Execute scripts (Python, Lua, or Java)
-    usage: /coder <run|reload|load|unload> <filename>
+    description: Execute scripts and manage the plugin
+    usage: /coder <run|reload|load|unload|confirm|cancel|update> [filename]
     permission: coder.admin
     permission-message: You must be an OP to use this command!
     aliases:
@@ -16,5 +16,5 @@ commands:
 
 permissions:
   coder.admin:
-    description: Allows execution and management of coder scripts.
+    description: Allows execution and management of coder scripts, plus version checking.
     default: op

@@ -2,6 +2,7 @@ package me.coder.commands;
 
 import me.coder.CoderPlugin;
 import me.coder.manager.ScriptManager;
+import me.coder.manager.VersionManager;
 import me.coder.manager.UserExecutionControl;
 import org.bukkit.command.*;
 import java.io.File;
@@ -11,16 +12,18 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
 
     private final ScriptManager scriptManager;
     private final CoderPlugin plugin;
+    private final VersionManager versionManager;
 
-    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager) {
+    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager) {
         this.plugin = plugin;
         this.scriptManager = scriptManager;
+        this.versionManager = versionManager;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel> [filename]");
+            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel|update> [filename]");
             return true;
         }
 
@@ -55,6 +58,47 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                 scriptManager.reloadScript(fileName, sender);
                 return true;
             }
+        }
+
+        // Handle update command - shows update info and download link
+        if (action.equals("update")) {
+            // Check for updates if latest version hasn't been fetched yet
+            if (versionManager.getLatestVersion() == null) {
+                sender.sendMessage("§eChecking for updates...");
+                versionManager.checkForUpdates();
+                
+                // Wait a moment for the async check to complete
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            
+            String currentVersion = versionManager.getCurrentVersion();
+            String latestVersion = versionManager.getLatestVersion();
+            boolean updateAvailable = versionManager.isUpdateAvailable();
+            
+            sender.sendMessage("§6§l=== Coder Update Information ===");
+            sender.sendMessage("§6Current Version: §e" + currentVersion);
+            
+            if (latestVersion != null && !latestVersion.isEmpty()) {
+                sender.sendMessage("§6Latest Version: §e" + latestVersion);
+                
+                if (updateAvailable) {
+                    sender.sendMessage("§6Status: §c§lUpdate Available!");
+                    String downloadLink = versionManager.getDownloadLink();
+                    if (downloadLink != null) {
+                        sender.sendMessage("§6Download Link: §b" + downloadLink);
+                    }
+                } else {
+                    sender.sendMessage("§6Status: §a✓ Up to date");
+                }
+            } else {
+                sender.sendMessage("§cCould not fetch latest version. Please check internet connection.");
+            }
+            
+            return true;
         }
 
         // Handle confirmation commands (no filename needed)
@@ -111,7 +155,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                     break;
                 default:
                     sender.sendMessage("§cUnknown action: " + action);
-                    sender.sendMessage("§cValid actions: run, reload, load, unload, confirm, cancel");
+                    sender.sendMessage("§cValid actions: run, reload, load, unload, confirm, cancel, update");
             }
         } catch (Exception e) {
             sender.sendMessage("§cError executing command: " + e.getMessage());
@@ -124,7 +168,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("run", "reload", "load", "unload", "confirm", "cancel");
+            return Arrays.asList("run", "reload", "load", "unload", "confirm", "cancel", "update");
         }
         
         if (args.length == 2 && isValidAction(args[0])) {
