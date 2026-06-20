@@ -14,7 +14,9 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 
 /**
- * Intercepts commands to handle CodeDSL command registrations and cross-plugin /coder & /code redirects.
+ * Intercepts commands to route:
+ * 1. /coder run <file> or /code run <file> - Execute FULL script
+ * 2. /nan (registered command) - Execute ONLY command block from script
  */
 public class CommandInterceptor implements Listener {
 
@@ -36,14 +38,22 @@ public class CommandInterceptor implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         String message = event.getMessage();
         
-        // 1. Intercept /coder run or /code run paths and redirect them to loadScript
+        // 1. Handle /coder run <file> or /code run <file> - Execute FULL script
         if (shouldRedirectCoderRun(message)) {
             event.setCancelled(true);
-            executeRedirect(event.getPlayer(), message);
+            executeCoderRun(event.getPlayer(), message);
             return;
         }
         
-        // 2. Check if this is a standard CodeDSL script-registered command
+        // 2. Check if this is a REGISTERED CodeDSL command (execute only command block)
+        String commandLabel = extractCommandLabel(message);
+        if (scriptManager.hasCommandHandler(commandLabel)) {
+            event.setCancelled(true);
+            scriptManager.executeCommandHandler(commandLabel, event.getPlayer());
+            return;
+        }
+        
+        // 3. Otherwise check if this is a script file execution via CommandParser
         if (commandParser.isCodeDSLCommand(message)) {
             commandParser.processCommand(event.getPlayer(), message, processor);
             event.setCancelled(true);
@@ -54,25 +64,43 @@ public class CommandInterceptor implements Listener {
     public void onServerCommand(ServerCommandEvent event) {
         String command = event.getCommand();
         
-        // 1. Intercept /coder run or /code run console commands and redirect them to loadScript
+        // 1. Handle /coder run <file> or /code run <file> - Execute FULL script
         if (shouldRedirectCoderRun(command)) {
             event.setCancelled(true);
-            executeRedirect(event.getSender(), command);
+            executeCoderRun(event.getSender(), command);
             return;
         }
         
-        // 2. Check if this is a standard CodeDSL script-registered command
+        // 2. Check if this is a REGISTERED CodeDSL command (execute only command block)
+        String commandLabel = extractCommandLabel(command);
+        if (scriptManager.hasCommandHandler(commandLabel)) {
+            event.setCancelled(true);
+            scriptManager.executeCommandHandler(commandLabel, event.getSender());
+            return;
+        }
+        
+        // 3. Otherwise check if this is a script file execution via CommandParser
         if (commandParser.isCodeDSLCommand(command)) {
             commandParser.processCommand(event.getSender(), command, processor);
-            // Fix: Cancel the event so the server doesn't try to parse the unknown command
             event.setCancelled(true); 
             event.setCommand(""); 
         }
     }
+    
+    /**
+     * Extract the base command label from a full command string
+     */
+    private String extractCommandLabel(String rawCommand) {
+        String clean = rawCommand.trim();
+        if (clean.startsWith("/")) {
+            clean = clean.substring(1);
+        }
+        String[] parts = clean.split("\\s+");
+        return parts.length > 0 ? parts[0].toLowerCase() : "";
+    }
 
     /**
-     * Helper to verify if the command pattern matches '/coder run ' or '/code run ' 
-     * targeting a configured file extension.
+     * Check if command matches /coder run or /code run pattern
      */
     private boolean shouldRedirectCoderRun(String rawCommand) {
         String lower = rawCommand.toLowerCase().trim();
@@ -80,40 +108,43 @@ public class CommandInterceptor implements Listener {
             lower = lower.substring(1);
         }
 
-        if (lower.startsWith("coder run ") || lower.startsWith("code run ")) {
-            String[] splitArgs = lower.split("\\s+");
-            if (splitArgs.length >= 3) {
-                String fileTarget = splitArgs[2].toLowerCase();
-                
-                YamlConfiguration config = addon.getAddonConfig();
-                if (config == null) return fileTarget.endsWith(".cd") || fileTarget.endsWith(".code");
-
-                // Pull configuration definitions
-                String mainExt = config.getString("file-extensions.main", ".cd").toLowerCase();
-                String legacyExt = config.getString("file-extensions.legacy", ".code").toLowerCase();
-                String oldExt = config.getString("file-extensions.old", ".cdsl").toLowerCase();
-                String customExt = config.getString("file-extensions.custom", "").toLowerCase();
-
-                // 1. Match core extensions
-                if (fileTarget.endsWith(mainExt) || fileTarget.endsWith(legacyExt) || fileTarget.endsWith(oldExt)) {
-                    return true;
-                }
-
-                // 2. Safely match custom extension slot if it passes guards
-                if (!customExt.isEmpty() 
-                    && !customExt.equals("your_prefered_custom_file_extension_here") 
-                    && customExt.startsWith(".")) {
-                    return fileTarget.endsWith(customExt);
-                }
-            }
+        // Only intercept /coder run or /code run
+        if (!(lower.startsWith("coder run ") || lower.startsWith("code run "))) {
+            return false;
         }
+
+        String[] splitArgs = lower.split("\\s+");
+        if (splitArgs.length < 3) {
+            return false;
+        }
+
+        String fileTarget = splitArgs[2].toLowerCase();
+        
+        YamlConfiguration config = addon.getAddonConfig();
+        if (config == null) return fileTarget.endsWith(".cd") || fileTarget.endsWith(".code");
+
+        String mainExt = config.getString("file-extensions.main", ".cd").toLowerCase();
+        String legacyExt = config.getString("file-extensions.legacy", ".code").toLowerCase();
+        String oldExt = config.getString("file-extensions.old", ".cdsl").toLowerCase();
+        String customExt = config.getString("file-extensions.custom", "").toLowerCase();
+
+        if (fileTarget.endsWith(mainExt) || fileTarget.endsWith(legacyExt) || fileTarget.endsWith(oldExt)) {
+            return true;
+        }
+
+        if (!customExt.isEmpty() 
+            && !customExt.equals("your_prefered_custom_file_extension_here") 
+            && customExt.startsWith(".")) {
+            return fileTarget.endsWith(customExt);
+        }
+
         return false;
     }
 
     /**
-     * Isolates the file name element out of the command args string and runs the redirection logic.
+     * Execute /coder run <file> or /code run <file> - runs FULL script file
      */
-    private void executeRedirect(CommandSender sender, String originalCommand) {
+    private void executeCoderRun(CommandSender sender, String originalCommand) {
         String cleanCommand = originalCommand.trim();
         if (cleanCommand.startsWith("/")) {
             cleanCommand = cleanCommand.substring(1);
@@ -124,12 +155,11 @@ public class CommandInterceptor implements Listener {
             String targetFileName = splitArgs[2];
             
             if (api != null) {
-                api.sendSuccess(sender, "[CodeDSL] Intercepted run command alias -> Redirecting file loading path...");
-            } else {
-                sender.sendMessage("§7[CodeDSL] Intercepted run command alias -> Redirecting file loading path...");
+                api.log("[CodeDSL] Running script file: " + targetFileName);
             }
             
-            scriptManager.loadScript(targetFileName, sender);
+            // Execute FULL script (NOT just registering commands)
+            scriptManager.runScript(targetFileName, sender);
         }
     }
 }

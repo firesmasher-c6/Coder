@@ -23,6 +23,7 @@ public class ScriptManager {
     private final Map<String, CodeDSLProcessor> loadedScripts = new ConcurrentHashMap<>();
     private final Map<String, Object> commandHandlers = new ConcurrentHashMap<>();
     private final Map<String, List<String>> scriptCommandMap = new ConcurrentHashMap<>();
+    private final Map<String, File> commandToScriptFile = new ConcurrentHashMap<>();  // NEW: Track which script each command comes from
     private CodeDSLAddon addonReference;
 
     public ScriptManager(File dataFolder, CoderAPI api) {
@@ -37,6 +38,9 @@ public class ScriptManager {
         this.addonReference = addon;
     }
 
+    /**
+     * Run script - execute FULL script file (no command registration)
+     */
     public void runScript(String fileName, CommandSender sender) {
         File scriptsDir = new File(dataFolder, "scripts");
         File scriptFile = new File(scriptsDir, fileName);
@@ -52,20 +56,24 @@ public class ScriptManager {
         }
 
         try {
-            api.sendSuccess(sender, "[CodeDSL] Executing: " + fileName);
-            parseAndRegisterScriptCommands(scriptFile);
+            if (api != null) {
+                api.log("Executing: " + fileName);
+            }
+            
+            // Execute FULL script (no command registration)
             processor.executeScript(scriptFile, sender);
+            
         } catch (Exception e) {
-            api.sendError(sender, "Error executing CodeDSL script: " + e.getMessage());
-            api.logError("CodeDSL Error: " + e.getMessage());
+            if (api != null) {
+                api.sendError(sender, "Error executing CodeDSL script: " + e.getMessage());
+                api.logError("CodeDSL Error: " + e.getMessage());
+            }
         }
     }
 
-    public void reloadScript(String fileName, CommandSender sender) {
-        runScript(fileName, sender);
-        api.sendSuccess(sender, "[CodeDSL] Script reloaded: " + fileName);
-    }
-
+    /**
+     * Load script - register commands from script file
+     */
     public void loadScript(String fileName, CommandSender sender) {
         File scriptsDir = new File(dataFolder, "scripts");
         File scriptFile = new File(scriptsDir, fileName);
@@ -79,9 +87,11 @@ public class ScriptManager {
             commandParser.parseCommandDefinitions(scriptFile);
             parseAndRegisterScriptCommands(scriptFile);
             loadedScripts.put(fileName, processor);
-            api.sendSuccess(sender, "[CodeDSL] Script loaded to memory: " + fileName);
+            if (api != null) {
+                api.log("Script loaded to memory: " + fileName);
+            }
         } catch (Exception e) {
-            sender.sendMessage("§cError processing script registration elements: " + e.getMessage());
+            sender.sendMessage("§cError processing script: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -102,9 +112,13 @@ public class ScriptManager {
     public void unloadScript(String fileName, CommandSender sender) {
         unloadScriptHandlers(fileName);
         if (loadedScripts.remove(fileName) != null) {
-            api.sendSuccess(sender, "[CodeDSL] Script unloaded: " + fileName);
+            if (api != null) {
+                api.log("Script unloaded: " + fileName);
+            }
         } else {
-            api.sendError(sender, "[CodeDSL] Script not loaded in memory: " + fileName);
+            if (api != null) {
+                api.log("Script not loaded in memory: " + fileName);
+            }
         }
     }
 
@@ -140,6 +154,7 @@ public class ScriptManager {
                     final File scriptTargetFile = file;
 
                     registerCommandHandler(finalizedCommand, scriptTargetFile, file.getName());
+                    commandToScriptFile.put(finalizedCommand.toLowerCase(), scriptTargetFile);
 
                     DynamicScriptCommand.register(
                         CodeDSLPlugin.getInstance(),
@@ -147,22 +162,24 @@ public class ScriptManager {
                         new ArrayList<>(),
                         finalizedPermission,
                         (commandSender, args) -> {
-                            try {
-                                executeCommandHandler(finalizedCommand, commandSender);
-                            } catch (Exception ex) {
-                                commandSender.sendMessage("§cExecution failure inside CodeDSL Processor processing loop.");
-                                ex.printStackTrace();
-                            }
+                            // Execute ONLY the command block, not the full script
+                            executeCommandBlock(finalizedCommand, scriptTargetFile, commandSender);
                         },
                         api
                     );
+
+                    if (api != null) {
+                        api.log("✓ Registered command: /" + finalizedCommand);
+                    }
 
                     detectedCommandName = null;
                     detectedPermission = null;
                 }
             }
         } catch (Exception e) {
-            api.logError("Failed to parse script syntax architecture mapping for " + file.getName() + ": " + e.getMessage());
+            if (api != null) {
+                api.logError("Failed to parse script: " + file.getName() + ": " + e.getMessage());
+            }
         }
     }
 
@@ -170,11 +187,68 @@ public class ScriptManager {
         String key = commandName.toLowerCase();
         commandHandlers.put(key, handler);
         scriptCommandMap.computeIfAbsent(scriptFile, k -> new ArrayList<>()).add(key);
-        if (api != null) {
-            api.log("[CodeDSL] Registered command handler: /" + key);
+    }
+
+    /**
+     * Execute ONLY the command block (from trigger: to next command or EOF)
+     */
+    private void executeCommandBlock(String commandName, File scriptFile, CommandSender sender) {
+        try {
+            List<String> lines = Files.readAllLines(scriptFile.toPath());
+            List<String> commandBlock = new ArrayList<>();
+            boolean inCommandBlock = false;
+
+            for (String line : lines) {
+                String trimmed = line.trim();
+
+                // Start collecting when we find the trigger
+                if (inCommandBlock) {
+                    // Stop if we hit another command definition
+                    if (trimmed.startsWith("command /") && !trimmed.contains(commandName)) {
+                        break;
+                    }
+                    // Skip the trigger: line itself
+                    if (!trimmed.equals("trigger:")) {
+                        commandBlock.add(line);
+                    }
+                }
+
+                // Find the trigger for this command
+                if (trimmed.startsWith("trigger:") && !inCommandBlock) {
+                    // Backtrack to find the command definition
+                    for (int i = lines.indexOf(line) - 1; i >= 0; i--) {
+                        String prevLine = lines.get(i).trim();
+                        if (prevLine.startsWith("command /") && prevLine.contains(commandName)) {
+                            inCommandBlock = true;
+                            break;
+                        }
+                        if (prevLine.startsWith("command /") && !prevLine.contains(commandName)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!commandBlock.isEmpty()) {
+                // Execute only the command block
+                String blockContent = String.join("\n", commandBlock);
+                processor.executeCommandBlock(blockContent, sender);
+                
+                if (api != null) {
+                    api.log("✓ Executed command: /" + commandName);
+                }
+            }
+        } catch (Exception e) {
+            sender.sendMessage("§c✗ Error executing command: " + e.getMessage());
+            if (api != null) {
+                api.logError("Command execution error: " + e.getMessage());
+            }
         }
     }
 
+    /**
+     * Execute registered command handler (OLD - kept for compatibility)
+     */
     public boolean executeCommandHandler(String commandName, CommandSender sender) {
         String key = commandName.toLowerCase();
         Object handler = commandHandlers.get(key);
@@ -186,12 +260,15 @@ public class ScriptManager {
 
         try {
             if (handler instanceof File) {
-                processor.executeScript((File) handler, sender);
+                File scriptFile = (File) handler;
+                executeCommandBlock(commandName, scriptFile, sender);
             }
             return true;
         } catch (Exception e) {
-            sender.sendMessage("§cError executing command /" + commandName + ": " + e.getMessage());
-            e.printStackTrace();
+            sender.sendMessage("§c✗ Error executing command: " + e.getMessage());
+            if (api != null) {
+                api.logError("Command execution error: " + e.getMessage());
+            }
             return false;
         }
     }
@@ -201,8 +278,9 @@ public class ScriptManager {
         if (commands != null) {
             for (String cmd : commands) {
                 commandHandlers.remove(cmd);
+                commandToScriptFile.remove(cmd.toLowerCase());
                 if (api != null) {
-                    api.log("[CodeDSL] Unregistered command handler: /" + cmd);
+                    api.log("✓ Unregistered command: /" + cmd);
                 }
             }
         }
@@ -263,6 +341,7 @@ public class ScriptManager {
     public void unloadAllScripts() {
         commandHandlers.clear();
         scriptCommandMap.clear();
+        commandToScriptFile.clear();
         loadedScripts.clear();
         commandParser.unregisterAllCommands();
         if (api != null) {

@@ -19,6 +19,7 @@ public class CodeDSLProcessor {
     private final Map<String, String> variables = new HashMap<>();
     private final Map<String, String> obfuscatedVars = new HashMap<>();
     private final PlaceholderManager placeholderManager;
+    private boolean silent = false; // NEW: Silent mode for command execution
 
     public CodeDSLProcessor(File dataFolder, CoderAPI api) {
         this.dataFolder = dataFolder;
@@ -28,13 +29,13 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Execute a CodeDSL script file
+     * Execute a CodeDSL script file (normal mode with logging)
      */
     public void executeScript(File scriptFile, CommandSender sender) {
         try {
             List<String> lines = Files.readAllLines(scriptFile.toPath());
             api.log("[CodeDSL] Executing: " + scriptFile.getName());
-            processLines(lines, sender);
+            processLines(lines, sender, false);
             api.log("[CodeDSL] Script execution complete!");
         } catch (Exception e) {
             api.logError("Error executing script: " + e.getMessage());
@@ -43,9 +44,37 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Process script lines
+     * Execute a command block ONLY (silent mode - no logging/broadcasting of command metadata)
+     * NEW: This method executes only the command block without logging script execution details
+     */
+    public void executeCommandBlock(String blockContent, CommandSender sender) {
+        try {
+            List<String> lines = new ArrayList<>();
+            for (String line : blockContent.split("\n")) {
+                lines.add(line);
+            }
+            this.silent = true;
+            processLines(lines, sender, true); // true = silent mode
+            this.silent = false;
+        } catch (Exception e) {
+            this.silent = false;
+            sender.sendMessage("§cError executing command block: " + e.getMessage());
+            api.logError("Error executing command block: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Process script lines (default - no silent mode)
      */
     private void processLines(List<String> lines, CommandSender sender) {
+        processLines(lines, sender, false);
+    }
+
+    /**
+     * Process script lines with optional silent mode
+     * NEW: Added isSilent parameter to suppress command logging
+     */
+    private void processLines(List<String> lines, CommandSender sender, boolean isSilent) {
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             String originalLine = line;
@@ -66,8 +95,10 @@ public class CodeDSLProcessor {
                     varName = varName.substring(1, varName.length() - 1);
                 }
                 if (variables.containsKey(varName)) {
-                    api.log("[CodeDSL] Variable '" + varName + "': " + variables.get(varName));
-                    i = processIndentedBlock(lines, i, originalLine, sender);
+                    if (!isSilent) {
+                        api.log("[CodeDSL] Variable '" + varName + "': " + variables.get(varName));
+                    }
+                    i = processIndentedBlock(lines, i, originalLine, sender, isSilent);
                 }
                 continue;
             }
@@ -84,10 +115,14 @@ public class CodeDSLProcessor {
                 if (obfuscatedVars.containsKey(varName)) {
                     try {
                         String decoded = new String(Base64.getDecoder().decode(obfuscatedVars.get(varName)));
-                        api.log("[CodeDSL] Obfuscated variable '" + varName + "': " + decoded);
-                        i = processIndentedBlock(lines, i, originalLine, sender);
+                        if (!isSilent) {
+                            api.log("[CodeDSL] Obfuscated variable '" + varName + "': " + decoded);
+                        }
+                        i = processIndentedBlock(lines, i, originalLine, sender, isSilent);
                     } catch (Exception e) {
-                        api.log("[CodeDSL] Error decoding obfuscated variable: " + varName);
+                        if (!isSilent) {
+                            api.log("[CodeDSL] Error decoding obfuscated variable: " + varName);
+                        }
                     }
                 }
                 continue;
@@ -155,12 +190,12 @@ public class CodeDSLProcessor {
 
             // Handle variable assignment
             else if (line.startsWith("var ")) {
-                parseVariable(line.substring(4), false);
+                parseVariable(line.substring(4), false, isSilent);
             }
 
             // Handle obfuscated variable assignment
             else if (line.startsWith("obfuscatedVAR ")) {
-                parseVariable(line.substring(14), true);
+                parseVariable(line.substring(14), true, isSilent);
             }
 
             // Handle delete variable
@@ -171,7 +206,9 @@ public class CodeDSLProcessor {
                 }
                 if (variables.remove(varName) != null) {
                     saveVariables();
-                    api.log("[CodeDSL] Variable deleted: " + varName);
+                    if (!isSilent) {
+                        api.log("[CodeDSL] Variable deleted: " + varName);
+                    }
                 }
             }
 
@@ -183,7 +220,9 @@ public class CodeDSLProcessor {
                 }
                 if (obfuscatedVars.remove(varName) != null) {
                     saveObfuscatedVariables();
-                    api.log("[CodeDSL] Obfuscated variable deleted: " + varName);
+                    if (!isSilent) {
+                        api.log("[CodeDSL] Obfuscated variable deleted: " + varName);
+                    }
                 }
             }
 
@@ -193,7 +232,9 @@ public class CodeDSLProcessor {
                     String ticks = line.substring(6).trim();
                     long delayTicks = Long.parseLong(ticks);
                     Thread.sleep(delayTicks * 50);
-                    api.log("[CodeDSL] Delayed " + delayTicks + " ticks");
+                    if (!isSilent) {
+                        api.log("[CodeDSL] Delayed " + delayTicks + " ticks");
+                    }
                 } catch (NumberFormatException | InterruptedException e) {
                     api.logError("Error parsing delay: " + e.getMessage());
                 }
@@ -206,7 +247,9 @@ public class CodeDSLProcessor {
                 if (delayMs > 0) {
                     try {
                         Thread.sleep(delayMs);
-                        api.log("[CodeDSL] Waited " + waitStr);
+                        if (!isSilent) {
+                            api.log("[CodeDSL] Waited " + waitStr);
+                        }
                     } catch (InterruptedException e) {
                         api.logError("Wait interrupted: " + e.getMessage());
                     }
@@ -216,7 +259,9 @@ public class CodeDSLProcessor {
             // Handle import statements
             else if (line.startsWith("import ")) {
                 String importStr = line.substring(7).trim();
-                handleImport(importStr);
+                if (!isSilent) {
+                    handleImport(importStr);
+                }
             }
 
             // Handle command definitions
@@ -225,7 +270,9 @@ public class CodeDSLProcessor {
                 if (commandDef.endsWith(":")) {
                     commandDef = commandDef.substring(0, commandDef.length() - 1).trim();
                 }
-                api.log("[CodeDSL] Command defined: " + commandDef + " (custom commands not yet fully implemented)");
+                if (!isSilent) {
+                    api.log("[CodeDSL] Command defined: " + commandDef + " (custom commands not yet fully implemented)");
+                }
             }
 
             // Handle run blocks
@@ -234,7 +281,7 @@ public class CodeDSLProcessor {
                     String runContent = line.substring(4).trim();
                     if (runContent.startsWith("{")) {
                         runContent = runContent.substring(1);
-                        i = processRunBlock(lines, i, originalLine, sender, runContent);
+                        i = processRunBlock(lines, i, originalLine, sender, runContent, isSilent);
                     }
                 }
             }
@@ -274,7 +321,9 @@ public class CodeDSLProcessor {
                             }
                             
                             if (delayMs > 0) {
-                                api.log("[CodeDSL] Started every loop: every " + timeValue + timeUnit);
+                                if (!isSilent) {
+                                    api.log("[CodeDSL] Started every loop: every " + timeValue + timeUnit);
+                                }
                                 i = processEveryBlock(lines, i, originalLine, sender, delayMs);
                             }
                         }
@@ -355,7 +404,7 @@ public class CodeDSLProcessor {
                         String actualValue = variables.get(varPart);
                         boolean conditionMet = actualValue != null && actualValue.equals(valuePart);
                         
-                        i = processIfElseBlock(lines, i, originalLine, sender, conditionMet);
+                        i = processIfElseBlock(lines, i, originalLine, sender, conditionMet, isSilent);
                     }
                 }
             }
@@ -363,9 +412,17 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Process indented block after a statement
+     * Process indented block after a statement (default - no silent mode)
      */
     private int processIndentedBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender) {
+        return processIndentedBlock(lines, startIndex, parentLine, sender, false);
+    }
+
+    /**
+     * Process indented block after a statement with optional silent mode
+     * NEW: Added isSilent parameter
+     */
+    private int processIndentedBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, boolean isSilent) {
         int baseIndent = getIndentation(parentLine);
         int i = startIndex + 1;
 
@@ -421,9 +478,17 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Process if/else block
+     * Process if/else block (default - no silent mode)
      */
     private int processIfElseBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, boolean conditionMet) {
+        return processIfElseBlock(lines, startIndex, parentLine, sender, conditionMet, false);
+    }
+
+    /**
+     * Process if/else block with optional silent mode
+     * NEW: Added isSilent parameter
+     */
+    private int processIfElseBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, boolean conditionMet, boolean isSilent) {
         int baseIndent = getIndentation(parentLine);
         int i = startIndex + 1;
         boolean inIfBlock = true;
@@ -552,9 +617,17 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Parse variable assignment
+     * Parse variable assignment (default - no silent mode)
      */
     private void parseVariable(String statement, boolean obfuscated) {
+        parseVariable(statement, obfuscated, false);
+    }
+
+    /**
+     * Parse variable assignment with optional silent mode
+     * NEW: Added isSilent parameter
+     */
+    private void parseVariable(String statement, boolean obfuscated, boolean isSilent) {
         String[] parts = statement.split("=", 2);
         if (parts.length == 2) {
             String name = parts[0].trim();
@@ -564,11 +637,15 @@ public class CodeDSLProcessor {
                 String obf = Base64.getEncoder().encodeToString(value.getBytes());
                 obfuscatedVars.put(name, obf);
                 saveObfuscatedVariables();
-                api.log("[CodeDSL] Obfuscated variable stored: " + name);
+                if (!isSilent) {
+                    api.log("[CodeDSL] Obfuscated variable stored: " + name);
+                }
             } else {
                 variables.put(name, value);
                 saveVariables();
-                api.log("[CodeDSL] Variable stored: " + name + " = " + value);
+                if (!isSilent) {
+                    api.log("[CodeDSL] Variable stored: " + name + " = " + value);
+                }
             }
         }
     }
@@ -760,9 +837,17 @@ public class CodeDSLProcessor {
     }
 
     /**
-     * Process run block { ... }
+     * Process run block { ... } (default - no silent mode)
      */
     private int processRunBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, String firstContent) {
+        return processRunBlock(lines, startIndex, parentLine, sender, firstContent, false);
+    }
+
+    /**
+     * Process run block with optional silent mode
+     * NEW: Added isSilent parameter
+     */
+    private int processRunBlock(List<String> lines, int startIndex, String parentLine, CommandSender sender, String firstContent, boolean isSilent) {
         int baseIndent = getIndentation(parentLine);
         int i = startIndex + 1;
         List<String> runLines = new ArrayList<>();
@@ -888,5 +973,13 @@ public class CodeDSLProcessor {
             }
         }
         return count;
+    }
+
+    /**
+     * Log message without [Coder] prefix (uses Bukkit logger directly)
+     * Use this instead of api.log for cleaner console output
+     */
+    private void logClean(String message) {
+        org.bukkit.Bukkit.getLogger().info("[CodeDSL] " + message);
     }
 }

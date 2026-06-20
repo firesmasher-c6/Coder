@@ -1,5 +1,5 @@
 name: CodeDSL
-version: 1.9.5
+version: 2.3.1
 main: me.coder.codedsl.CodeDSLPlugin
 description: A Domain Specific Language addon for the Coder plugin
 author: Firesmasher
@@ -14,10 +14,13 @@ dependencies:
 commands:
   codedsl:
     description: Execute and manage CodeDSL scripts
-    usage: /codedsl <run|reload|load|unload|list> <filename>
+    usage: /codedsl <run|reload|load|unload|list|update> <filename>
     aliases:
       - cdsl
       - code-dsl
+  codedsl-update:
+    description: Check for CodeDSL updates
+    usage: /codedsl update
 
 permissions:
   codedsl.use:
@@ -25,4 +28,7 @@ permissions:
     default: op
   codedsl.command:
     description: Allows running CodeDSL commands
+    default: op
+  codedsl.update:
+    description: Allows checking for updates
     default: op
