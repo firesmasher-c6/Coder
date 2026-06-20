@@ -308,6 +308,7 @@ public class VersionManager implements Listener {
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(java.time.Duration.ofSeconds(30))
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
                     .build();
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -370,6 +371,7 @@ public class VersionManager implements Listener {
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(java.time.Duration.ofSeconds(30))
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
                     .build();
 
             HttpRequest request = HttpRequest.newBuilder()
