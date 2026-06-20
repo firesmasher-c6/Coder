@@ -56,10 +56,6 @@ public class ScriptManager {
         }
 
         try {
-            if (api != null) {
-                api.log("Executing: " + fileName);
-            }
-            
             // Execute FULL script (no command registration)
             processor.executeScript(scriptFile, sender);
             
@@ -168,9 +164,7 @@ public class ScriptManager {
                         api
                     );
 
-                    if (api != null) {
-                        api.log("✓ Registered command: /" + finalizedCommand);
-                    }
+                    api.log("Registered command: /" + finalizedCommand);
 
                     detectedCommandName = null;
                     detectedPermission = null;
@@ -279,9 +273,7 @@ public class ScriptManager {
             for (String cmd : commands) {
                 commandHandlers.remove(cmd);
                 commandToScriptFile.remove(cmd.toLowerCase());
-                if (api != null) {
-                    api.log("✓ Unregistered command: /" + cmd);
-                }
+                api.log("Unregistered command: /" + cmd);
             }
         }
     }

@@ -431,7 +431,8 @@ public class VersionManager implements Listener {
         if (files != null) {
             for (File file : files) {
                 String name = file.getName().toLowerCase();
-                if ((name.startsWith("codedsl") || name.startsWith("code-dsl") || name.startsWith("coder")) 
+                // Only delete CodeDSL files: codedsl-*.jar or code-dsl-*.jar (NOT coder-*.jar)
+                if ((name.startsWith("codedsl-") || name.startsWith("code-dsl-")) 
                     && name.endsWith(".jar") 
                     && !name.contains(latestVersion)) {
                     if (file.delete()) {

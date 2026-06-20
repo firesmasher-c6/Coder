@@ -266,13 +266,7 @@ public class CodeDSLProcessor {
 
             // Handle command definitions
             else if (line.startsWith("command ")) {
-                String commandDef = line.substring(8).trim();
-                if (commandDef.endsWith(":")) {
-                    commandDef = commandDef.substring(0, commandDef.length() - 1).trim();
-                }
-                if (!isSilent) {
-                    api.log("[CodeDSL] Command defined: " + commandDef + " (custom commands not yet fully implemented)");
-                }
+                // Custom commands not yet fully implemented - skip silently
             }
 
             // Handle run blocks

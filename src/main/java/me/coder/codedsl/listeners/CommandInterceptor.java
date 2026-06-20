@@ -142,7 +142,7 @@ public class CommandInterceptor implements Listener {
     }
 
     /**
-     * Execute /coder run <file> or /code run <file> - runs FULL script file
+     * Execute /coder run <file> or /code run <file> - runs FULL script file AND registers commands
      */
     private void executeCoderRun(CommandSender sender, String originalCommand) {
         String cleanCommand = originalCommand.trim();
@@ -154,11 +154,17 @@ public class CommandInterceptor implements Listener {
         if (splitArgs.length >= 3) {
             String targetFileName = splitArgs[2];
             
-            if (api != null) {
-                api.log("[CodeDSL] Running script file: " + targetFileName);
+            try {
+                // First, load/register commands from the script
+                scriptManager.loadScriptSilent(targetFileName, sender);
+            } catch (Exception e) {
+                // File not found or other error - just continue to run the script
+                if (api != null) {
+                    api.logError("Failed to register commands from script: " + e.getMessage());
+                }
             }
             
-            // Execute FULL script (NOT just registering commands)
+            // Then execute the FULL script
             scriptManager.runScript(targetFileName, sender);
         }
     }

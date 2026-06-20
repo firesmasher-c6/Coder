@@ -59,16 +59,15 @@ public class DynamicScriptCommand extends BukkitCommand {
             commandName = commandName.replace(":", "").trim();
 
             DynamicScriptCommand cmd = new DynamicScriptCommand(
-                commandName,
+                "codedsl:" + commandName,
                 "CodeDSL Dynamic Command",
-                "/" + commandName,
+                "/codedsl:" + commandName,
                 aliases != null ? aliases : new ArrayList<>(),
                 executor
             );
 
             if (permission != null && !permission.isEmpty()) {
                 cmd.setPermission(permission);
-                cmd.setPermissionMessage("§cI'm sorry, but you do not have permission to perform this command.");
             }
 
             map.register("codedsl", cmd);
@@ -81,11 +80,11 @@ public class DynamicScriptCommand extends BukkitCommand {
             } catch (Exception ignored) {}
 
             if (api != null) {
-                api.log("Successfully registered script command: /" + commandName);
+                api.log("Successfully registered script command: /codedsl:" + commandName);
             }
         } catch (Exception e) {
             if (api != null) {
-                api.logError("Failed to reflectively inject script command /" + commandName + ": " + e.getMessage());
+                api.logError("Failed to reflectively inject script command /codedsl:" + commandName + ": " + e.getMessage());
             }
             e.printStackTrace();
         }
