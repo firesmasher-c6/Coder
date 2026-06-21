@@ -1,6 +1,6 @@
 # CoderJSLoader 🚀
 
-An ultra-lightweight (~1.37MB) native JavaScript (.js) script execution addon for the **Coder v1.3.6** Minecraft plugin. 
+An ultra-lightweight (~1.37MB) native JavaScript (.js) script execution addon for the **Coder v1.3.6 or newer** Minecraft plugin. 
 
 Optimized specifically for modern **Paper 1.21+** servers running **OpenJDK 21 to 25**. It uses advanced Java reflection hooks to seamlessly unmask and support the `.js` extension inside Coder's core `/coder run` command pipeline without triggering any Mojang remapper bugs or Error T10 security blocks.
 
