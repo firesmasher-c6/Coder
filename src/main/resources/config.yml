@@ -7,3 +7,7 @@ scripts:
   python-enabled: true
   lua-enabled: true
   java-enabled: true
+
+# Enable Coder Addons?
+enabled: true
+blocked-addon-message: "[Coder] This Coder Addon Has Been Blocked. If This is a mistake please read your code."

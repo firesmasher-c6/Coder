@@ -4,6 +4,8 @@ import me.coder.CoderPlugin;
 import me.coder.manager.ScriptManager;
 import me.coder.manager.VersionManager;
 import me.coder.manager.UserExecutionControl;
+import me.coder.manager.ConfigManager;
+import me.coder.javafixer.JavaCompiler;
 import org.bukkit.command.*;
 import java.io.File;
 import java.util.*;
@@ -13,17 +15,21 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     private final ScriptManager scriptManager;
     private final CoderPlugin plugin;
     private final VersionManager versionManager;
+    private final ConfigManager configManager;
+    private final JavaCompiler javaCompiler;
 
-    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager) {
+    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler) {
         this.plugin = plugin;
         this.scriptManager = scriptManager;
         this.versionManager = versionManager;
+        this.configManager = configManager;
+        this.javaCompiler = javaCompiler;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel|update> [filename]");
+            sender.sendMessage("§cUsage: /coder <run|reload|load|unload|confirm|cancel|update|update-jar|reload-config> [filename]");
             return true;
         }
 
@@ -37,7 +43,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                 
                 try {
                     // Reload config
-                    plugin.reloadConfig();
+                    configManager.loadConfig();
                     sender.sendMessage("§a✓ Config reloaded");
                     
                     // Reload plugin
@@ -60,44 +66,30 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        // Handle update command - shows update info and download link
+        // Handle reload-config command
+        if (action.equals("reload-config")) {
+            if (!sender.hasPermission("coder.admin")) {
+                sender.sendMessage("§cYou don't have permission to use this command!");
+                return true;
+            }
+            configManager.loadConfig();
+            sender.sendMessage("§a✓ Config reloaded!");
+            return true;
+        }
+
+        // Handle update command - shows update info
         if (action.equals("update")) {
-            // Check for updates if latest version hasn't been fetched yet
-            if (versionManager.getLatestVersion() == null) {
-                sender.sendMessage("§eChecking for updates...");
-                versionManager.checkForUpdates();
-                
-                // Wait a moment for the async check to complete
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+            versionManager.handleUpdateCommand(sender);
+            return true;
+        }
+
+        // Handle update-jar command - downloads and installs new version
+        if (action.equals("update-jar")) {
+            if (!sender.hasPermission("coder.admin")) {
+                sender.sendMessage("§cYou don't have permission to use this command!");
+                return true;
             }
-            
-            String currentVersion = versionManager.getCurrentVersion();
-            String latestVersion = versionManager.getLatestVersion();
-            boolean updateAvailable = versionManager.isUpdateAvailable();
-            
-            sender.sendMessage("§6§l=== Coder Update Information ===");
-            sender.sendMessage("§6Current Version: §e" + currentVersion);
-            
-            if (latestVersion != null && !latestVersion.isEmpty()) {
-                sender.sendMessage("§6Latest Version: §e" + latestVersion);
-                
-                if (updateAvailable) {
-                    sender.sendMessage("§6Status: §c§lUpdate Available!");
-                    String downloadLink = versionManager.getDownloadLink();
-                    if (downloadLink != null) {
-                        sender.sendMessage("§6Download Link: §b" + downloadLink);
-                    }
-                } else {
-                    sender.sendMessage("§6Status: §a✓ Up to date");
-                }
-            } else {
-                sender.sendMessage("§cCould not fetch latest version. Please check internet connection.");
-            }
-            
+            versionManager.handleUpdateJarCommand(sender);
             return true;
         }
 
@@ -145,7 +137,30 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         try {
             switch (action) {
                 case "run":
-                    scriptManager.runScript(fileName, sender);
+                    // Check if it's a Java file
+                    if (fileName.endsWith(".java")) {
+                        File javaFile = new File(plugin.getDataFolder(), "scripts/" + fileName);
+                        if (javaFile.exists()) {
+                            javaCompiler.compileAndExecute(javaFile, sender);
+                        } else {
+                            // Try without extension
+                            javaFile = new File(plugin.getDataFolder(), "scripts/" + fileName.replace(".java", "") + ".java");
+                            if (javaFile.exists()) {
+                                javaCompiler.compileAndExecute(javaFile, sender);
+                            } else {
+                                sender.sendMessage("§cJava file not found: " + fileName);
+                            }
+                        }
+                    } else {
+                        // Check if .java version exists
+                        File javaFile = new File(plugin.getDataFolder(), "scripts/" + fileName + ".java");
+                        if (javaFile.exists()) {
+                            javaCompiler.compileAndExecute(javaFile, sender);
+                        } else {
+                            // Handle as regular script (Python/Lua)
+                            scriptManager.runScript(fileName, sender);
+                        }
+                    }
                     break;
                 case "load":
                     scriptManager.loadScript(fileName, sender);
@@ -155,7 +170,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                     break;
                 default:
                     sender.sendMessage("§cUnknown action: " + action);
-                    sender.sendMessage("§cValid actions: run, reload, load, unload, confirm, cancel, update");
+                    sender.sendMessage("§cValid actions: run, reload, load, unload, confirm, cancel, update, update-jar, reload-config");
             }
         } catch (Exception e) {
             sender.sendMessage("§cError executing command: " + e.getMessage());
@@ -168,7 +183,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("run", "reload", "load", "unload", "confirm", "cancel", "update");
+            return Arrays.asList("run", "reload", "load", "unload", "confirm", "cancel", "update", "update-jar", "reload-config");
         }
         
         if (args.length == 2 && isValidAction(args[0])) {
@@ -191,11 +206,16 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean isValidAction(String action) {
-        return action.equalsIgnoreCase("run") || action.equalsIgnoreCase("reload") ||
-               action.equalsIgnoreCase("load") || action.equalsIgnoreCase("unload");
+        return action.equalsIgnoreCase("run") || 
+               action.equalsIgnoreCase("reload") || 
+               action.equalsIgnoreCase("load") || 
+               action.equalsIgnoreCase("unload");
     }
 
     private boolean isSupportedFile(String fileName) {
-        return fileName.endsWith(".py") || fileName.endsWith(".lua") || fileName.endsWith(".java");
+        return fileName.endsWith(".py") || 
+               fileName.endsWith(".lua") || 
+               fileName.endsWith(".java") || 
+               fileName.endsWith(".class");
     }
 }
