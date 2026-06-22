@@ -1,0 +1,122 @@
+# Coder Plugin - Script Examples
+
+This file contains example scripts for the Coder plugin.
+
+## Installation
+
+Place your script files in the `plugins/Coder/scripts/` directory.
+
+### Supported File Types:
+- `.py` - Python scripts (Jython)
+- `.lua` - Lua scripts (LuaJ)
+- `.java` - Java classes that implement ScriptInterface
+- `.txt` - Custom syntax scripts
+
+---
+
+## Examples
+
+### Python Example (hello.py)
+```python
+print"Hello, World!"
+```
+
+### Lua Example (hello.lua)
+```lua
+print("Hello, World!")
+print("This is a Lua script running on a Minecraft server!")
+```
+
+### Java Example (HelloWorld.java)
+```java
+import me.coder.ScriptInterface;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+
+public class HelloWorld implements ScriptInterface {
+    @Override
+    public void run(CommandSender sender) {
+        sender.sendMessage("§aHello from Java!");
+        Bukkit.broadcastMessage("§bHello, World from Coder!");
+    }
+}
+```
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/coder run <filename>` | Execute a script immediately |
+| `/coder reload <filename>` | Reload a script from disk |
+| `/coder load <filename>` | Load a Java script to server memory |
+| `/coder unload <filename>` | Unload a Java script from memory |
+
+### Usage Examples:
+```
+/coder run hello.py
+/coder run hello.lua
+/coder run HelloWorld.java
+/coder reload hello.py
+/coder load HelloWorld.java
+/coder unload HelloWorld.java
+```
+
+---
+
+## Accessing CommandSender
+
+In Python and Lua scripts, you can access the CommandSender object:
+
+### Python:
+```python
+sender.sendMessage("§cRed text message")
+```
+
+### Lua:
+```lua
+-- Note: Direct sender access may require proper coercion
+print("Lua script executed!")
+```
+
+---
+
+## Error Logging
+
+When errors occur, they are automatically logged to:
+```
+plugins/Coder/Logs/Error-Logs/Error-YYYY-MM-DD_HH-MM-SS-N.txt
+```
+
+Each error log contains:
+- Script name that caused the error
+- Timestamp of the error
+- Full stack trace
+
+---
+
+## Important Notes
+
+1. **Java Classes**: Must implement the `ScriptInterface` interface
+2. **Python/Lua**: Have direct access to the `sender` CommandSender object
+3. **File Names**: Tab-completion works for scripts in the scripts folder
+4. **No External Requirements**: Everything is bundled in the plugin JAR
+5. **All Languages Ready**: GraalPy, LuaJ, and Java compiler are built-in
+
+---
+
+## Troubleshooting
+
+### "Script not found"
+- Make sure the file is in `plugins/Coder/scripts/`
+- Check the exact filename (case-sensitive on some systems)
+
+### Script won't run
+- Check `plugins/Coder/Logs/Error-Logs/` for error details
+- Verify the script syntax is correct
+- Check the console for any error messages
+
+---
+
+Version: 1.3.6

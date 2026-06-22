@@ -1,18 +1,14 @@
-# Get the directory where this script is located
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$targetFolder = Join-Path $scriptPath "target"
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ===================================" -ForegroundColor Yellow
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Cleaning up old build files..." -ForegroundColor Yellow
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " build.ps1 | build.gradle" -ForegroundColor Yellow
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ===================================" -ForegroundColor Yellow
+Remove-Item -Path ".\build" -Recurse -Force -ErrorAction SilentlyContinue
 
-# Delete the target folder first
-if (Test-Path $targetFolder) {
-    Write-Host "Deleting target folder..." -ForegroundColor Yellow
-    Remove-Item -Path $targetFolder -Recurse -Force
-    Write-Host "Target folder deleted." -ForegroundColor Green
-} else {
-    Write-Host "Target folder not found." -ForegroundColor Yellow
-}
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ------< EXECUTING >------" -ForegroundColor Green
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Running Gradle Build..." -ForegroundColor Cyan
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " EXECUTION COMPLETE!" -ForegroundColor Green
+gradle build
 
-# Run Maven clean package
-Write-Host "Building project..." -ForegroundColor Cyan
-mvn clean package
-
-Write-Host "Build complete." -ForegroundColor Green
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " =============================================================" -ForegroundColor Green
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " DONE! | GRADLE HAS ALL INFOs ERRORS ARE NOT DISPLAYED HERE!" -ForegroundColor Green
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Green -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ============================================================" -ForegroundColor Green
