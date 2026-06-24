@@ -56,38 +56,112 @@ public class ConfigManager {
     }
     
     /**
+     * Check if a specific language is enabled
+     * @param language The language name (lua, python, java)
+     * @return true if enabled
+     */
+    public boolean isLanguageEnabled(String language) {
+        return config.getBoolean("plugin.languages." + language.toLowerCase(), true);
+    }
+    
+    /**
      * Check if Python scripts are enabled
      */
     public boolean isPythonEnabled() {
-        return config.getBoolean("scripts.python-enabled", true);
+        return isLanguageEnabled("python");
     }
     
     /**
      * Check if Lua scripts are enabled
      */
     public boolean isLuaEnabled() {
-        return config.getBoolean("scripts.lua-enabled", true);
+        return isLanguageEnabled("lua");
     }
     
     /**
      * Check if Java scripts are enabled
      */
     public boolean isJavaEnabled() {
-        return config.getBoolean("scripts.java-enabled", true);
+        return isLanguageEnabled("java");
     }
     
     /**
-     * Check if Coder Addons are enabled
+     * Check if a specific command is enabled
+     * @param commandName The command name (run, load, unload, update, update-jar, reload, confirm, cancel)
+     * @return true if enabled
      */
-    public boolean areAddonsEnabled() {
-        return config.getBoolean("enabled", true);
+    public boolean isCommandEnabled(String commandName) {
+        return config.getBoolean("commands.coder." + commandName.toLowerCase(), true);
     }
     
     /**
-     * Get the blocked addon message
+     * Check if run command is enabled
      */
-    public String getBlockedAddonMessage() {
-        return config.getString("blocked-addon-message", "[Coder] This Coder Addon Has Been Blocked. If This is a mistake please read your code.");
+    public boolean isRunCommandEnabled() {
+        return isCommandEnabled("run");
+    }
+    
+    /**
+     * Check if load command is enabled
+     */
+    public boolean isLoadCommandEnabled() {
+        return isCommandEnabled("load");
+    }
+    
+    /**
+     * Check if unload command is enabled
+     */
+    public boolean isUnloadCommandEnabled() {
+        return isCommandEnabled("unload");
+    }
+    
+    /**
+     * Check if reload command is enabled
+     */
+    public boolean isReloadCommandEnabled() {
+        return isCommandEnabled("reload");
+    }
+    
+    /**
+     * Check if update command is enabled
+     */
+    public boolean isUpdateCommandEnabled() {
+        return isCommandEnabled("update");
+    }
+    
+    /**
+     * Check if update-jar command is enabled
+     */
+    public boolean isUpdateJarCommandEnabled() {
+        return isCommandEnabled("update-jar");
+    }
+    
+    /**
+     * Check if confirm command is enabled
+     */
+    public boolean isConfirmCommandEnabled() {
+        return isCommandEnabled("confirm");
+    }
+    
+    /**
+     * Check if cancel command is enabled
+     */
+    public boolean isCancelCommandEnabled() {
+        return isCommandEnabled("cancel");
+    }
+    
+    /**
+     * Check if error logging is enabled
+     */
+    public boolean isErrorLoggingEnabled() {
+        return config.getBoolean("Logs.errors", true);
+    }
+    
+    /**
+     * Check if compile error logging is enabled
+     */
+    public boolean isCompileErrorLoggingEnabled() {
+        return config.getBoolean("Logs.compile-errors", true);
     }
     
     /**

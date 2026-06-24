@@ -1,8 +1,6 @@
 package me.coder.manager;
 
 import me.coder.CoderPlugin;
-import me.coder.ScriptInterface;
-import me.coder.manager.UserExecutionControl;
 import org.bukkit.command.CommandSender;
 import org.python.util.PythonInterpreter;
 import org.luaj.vm2.Globals;
@@ -10,19 +8,18 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
-import javax.tools.*;
 import java.io.*;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ScriptManager {
     private final CoderPlugin plugin;
     private final Map<String, Object> loadedScripts = new HashMap<>();
+    private final ConfigManager configManager;
 
     public ScriptManager(CoderPlugin plugin) {
         this.plugin = plugin;
+        this.configManager = plugin.getConfigManager();
     }
 
     public void runScript(String fileName, CommandSender sender) {
@@ -33,14 +30,26 @@ public class ScriptManager {
             return;
         }
 
-        // Check for terminal/shell commands (instant rejection)
+        // Check if language is enabled
+        if (fileName.endsWith(".py") && !configManager.isPythonEnabled()) {
+            sender.sendMessage("§c[Coder] Python scripts are disabled in config.yml");
+            return;
+        }
+        if (fileName.endsWith(".lua") && !configManager.isLuaEnabled()) {
+            sender.sendMessage("§c[Coder] Lua scripts are disabled in config.yml");
+            return;
+        }
+        if (fileName.endsWith(".java") && !configManager.isJavaEnabled()) {
+            sender.sendMessage("§c[Coder] Java scripts are disabled in config.yml");
+            return;
+        }
+
         if (UserExecutionControl.hasTerminalCommands(file)) {
             sender.sendMessage("§c§lError: Error T10!");
             logError(new Exception("Terminal command detected in: " + fileName), fileName);
             return;
         }
 
-        // Check for dangerous imports in Java files
         if (fileName.endsWith(".java")) {
             List<String> dangerousImports = UserExecutionControl.checkDangerousImports(file);
             if (!dangerousImports.isEmpty()) {
@@ -53,15 +62,25 @@ public class ScriptManager {
         runScriptDirect(fileName, sender);
     }
 
-    /**
-     * Run a script directly without checking for dangerous imports
-     * Used after confirmation
-     */
     public void runScriptDirect(String fileName, CommandSender sender) {
         File file = new File(plugin.getDataFolder(), "scripts/" + fileName);
 
         if (!file.exists()) {
             sender.sendMessage("§cScript not found: " + fileName);
+            return;
+        }
+
+        // Check if language is enabled (double-check)
+        if (fileName.endsWith(".py") && !configManager.isPythonEnabled()) {
+            sender.sendMessage("§c[Coder] Python scripts are disabled in config.yml");
+            return;
+        }
+        if (fileName.endsWith(".lua") && !configManager.isLuaEnabled()) {
+            sender.sendMessage("§c[Coder] Lua scripts are disabled in config.yml");
+            return;
+        }
+        if (fileName.endsWith(".java") && !configManager.isJavaEnabled()) {
+            sender.sendMessage("§c[Coder] Java scripts are disabled in config.yml");
             return;
         }
 
@@ -71,7 +90,7 @@ public class ScriptManager {
             } else if (fileName.endsWith(".lua")) {
                 runLua(file, sender);
             } else if (fileName.endsWith(".java")) {
-                compileJava(file, sender);
+                sender.sendMessage("§cUse /coder run <file.java> to execute Java files");
             } else {
                 sender.sendMessage("§cUnsupported file type. Supported: .py, .lua, .java");
             }
@@ -133,96 +152,19 @@ public class ScriptManager {
         }
     }
 
-    private void compileJava(File file, CommandSender sender) {
-        sender.sendMessage("§d[Coder] Compiling Java: " + file.getName());
-        
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        if (compiler == null) {
-            sender.sendMessage("§cError: JDK not found. Use a JDK, not a JRE.");
-            return;
-        }
-
-        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        
-        // Build classpath with standard Java classpath
-        String classpath = System.getProperty("java.class.path");
-
-        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null)) {
-            Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjects(file);
-            List<String> options = List.of("-classpath", classpath.toString(), "-encoding", "UTF-8");
-            
-            boolean success = compiler.getTask(null, fileManager, diagnostics, options, null, compilationUnits).call();
-
-            if (!success) {
-                sender.sendMessage("§cCompilation Failed!");
-                for (Diagnostic<?> diagnostic : diagnostics.getDiagnostics()) {
-                    sender.sendMessage("§c" + diagnostic.toString());
-                }
-                return;
-            }
-        } catch (IOException e) {
-            sender.sendMessage("§cIO Error: " + e.getMessage());
-            logError(e, file.getName());
-            return;
-        }
-
-        try {
-            List<URL> urlList = new ArrayList<>();
-            urlList.add(file.getParentFile().toURI().toURL());
-            
-            URL[] urls = urlList.toArray(new URL[0]);
-            try (URLClassLoader classLoader = new URLClassLoader(urls, this.getClass().getClassLoader())) {
-                String className = file.getName().replace(".java", "");
-                Class<?> clazz = classLoader.loadClass(className);
-                Object instance = clazz.getDeclaredConstructor().newInstance();
-
-                if (instance instanceof ScriptInterface) {
-                    ((ScriptInterface) instance).run(sender);
-                    sender.sendMessage("§aJava script executed successfully!");
-                    loadedScripts.put(file.getName(), instance);
-                } else {
-                    sender.sendMessage("§cError: Class must implement ScriptInterface.");
-                }
-            }
-        } catch (Exception e) {
-            sender.sendMessage("§cExecution Error: " + e.getMessage());
-            logError(e, file.getName());
-        }
-    }
-
     public void reloadScript(String fileName, CommandSender sender) {
         loadedScripts.remove(fileName);
         sender.sendMessage("§d[Coder] Reloaded: " + fileName);
     }
 
-    public void loadScript(String fileName, CommandSender sender) {
-        File file = new File(plugin.getDataFolder(), "scripts/" + fileName);
-        if (!file.exists()) {
-            sender.sendMessage("§cScript not found: " + fileName);
-            return;
-        }
-        
-        if (fileName.endsWith(".java")) {
-            compileJava(file, sender);
-            sender.sendMessage("§aScript loaded to memory.");
-        } else {
-            sender.sendMessage("§cOnly Java scripts can be preloaded.");
-        }
-    }
-
-    public void unloadScript(String fileName, CommandSender sender) {
-        if (loadedScripts.remove(fileName) != null) {
-            sender.sendMessage("§aScript unloaded from memory.");
-        } else {
-            sender.sendMessage("§cScript not found in memory.");
-        }
-    }
-
     private void logError(Exception e, String fileName) {
+        // Check if error logging is enabled
+        if (!configManager.isErrorLoggingEnabled()) {
+            return; // Error logging disabled
+        }
+
         try {
             File logsDir = new File(plugin.getDataFolder(), "Logs/Error-Logs");
-            
-            // Ensure directory exists
             if (!logsDir.exists()) {
                 if (!logsDir.mkdirs()) {
                     plugin.getLogger().severe("Failed to create error logs directory!");
@@ -232,7 +174,6 @@ public class ScriptManager {
             
             String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
             int errorCount = getErrorLogCount(logsDir) + 1;
-            
             File errorLog = new File(logsDir, "Error-" + timestamp + "-" + errorCount + ".txt");
             
             try (PrintWriter writer = new PrintWriter(new FileWriter(errorLog))) {
@@ -242,7 +183,6 @@ public class ScriptManager {
                 writer.println("=====================================================");
                 writer.println();
                 e.printStackTrace(writer);
-                writer.println();
                 writer.println("=====================================================");
             }
             

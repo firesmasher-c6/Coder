@@ -1,13 +1,51 @@
-# Coder Plugin Configuration
+# =====================================================
+# = Coder Plugin Configuration File
+# = Made By FireSmasher.
+# =====================================================
+# = Web: https://codestuff.pages.dev
+# = Github: https://github.com/firesmasher-c6/Coder
+# = Modrinth: https://modrinth.com/plugin/coder
+# =====================================================
+
+# Main Plugin Settings
 plugin:
+  # Enable or disable the entire plugin
   enabled: true
+  
+  # Supported Languages - Set to true to enable, false to disable
+  languages:
+    # Enable Python script execution (.py files)
+    python: true
+    # Enable Lua script execution (.lua files)
+    lua: true
+    # Enable Java script compilation and execution (.java files)
+    java: true
 
-# Script Settings
-scripts:
-  python-enabled: true
-  lua-enabled: true
-  java-enabled: true
+# Command Settings
+# Enable or disable specific commands
+# Defaults to true if not specified
+commands:
+  coder:
+    # /coder run <file> - Execute Python, Lua, or Java scripts
+    run: true
+    # /coder load <file.java> - Load and execute a Java class into memory
+    load: true
+    # /coder unload <classname> - Unload a Java class from memory
+    unload: true
+    # /coder reload [file] - Reload plugin, config, or specific script
+    reload: true
+    # /coder update - Check for plugin updates
+    update: true
+    # /coder update-jar - Download and install latest plugin version
+    update-jar: true
+    # /coder confirm - Confirm execution of a script with dangerous imports
+    confirm: true
+    # /coder cancel - Cancel execution of a pending dangerous script
+    cancel: true
 
-# Enable Coder Addons?
-enabled: true
-blocked-addon-message: "[Coder] This Coder Addon Has Been Blocked. If This is a mistake please read your code."
+# Logging Settings
+Logs:
+  # Log general script execution errors to Logs/Error-Logs/
+  errors: true
+  # Log Java compilation errors to Logs/JavaCompile-Errors/
+  compile-errors: true

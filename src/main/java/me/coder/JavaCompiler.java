@@ -1,4 +1,4 @@
-package me.coder.javafixer;
+package me.coder;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -8,20 +8,35 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.StringJoiner;
 
 public class JavaCompiler {
 
     private final Plugin plugin;
     private final File javaClassesFolder;
+    private final File loadedFolder;
+    private final File runtimeFolder;
+    private final Map<String, Class<?>> loadedClasses = new HashMap<>();
 
     public JavaCompiler(Plugin plugin, File javaClassesFolder) {
         this.plugin = plugin;
         this.javaClassesFolder = javaClassesFolder;
+        this.loadedFolder = new File(javaClassesFolder, "Loaded");
+        this.runtimeFolder = new File(javaClassesFolder, "Runtime");
+        
+        // Create folders if they don't exist
+        if (!loadedFolder.exists()) {
+            loadedFolder.mkdirs();
+        }
+        if (!runtimeFolder.exists()) {
+            runtimeFolder.mkdirs();
+        }
     }
 
     /**
-     * Compile and execute a Java file
+     * Compile and execute a Java file (stores in Runtime folder)
      */
     public boolean compileAndExecute(File javaFile, CommandSender executor) {
         // Security check
@@ -29,27 +44,81 @@ public class JavaCompiler {
             return false;
         }
 
-        executor.sendMessage("§a[JavaFixer] Compiling " + javaFile.getName() + "...");
+        executor.sendMessage("§a[Coder] Compiling " + javaFile.getName() + "...");
         long startTime = System.currentTimeMillis();
 
-        if (compile(javaFile, executor)) {
+        if (compile(javaFile, executor, runtimeFolder)) {
             long duration = System.currentTimeMillis() - startTime;
-            executor.sendMessage("§a[JavaFixer] Compilation successful (" + duration + "ms)");
+            executor.sendMessage("§a[Coder] Compilation successful (" + duration + "ms)");
             
             String className = javaFile.getName().replace(".java", "");
-            loadAndRunClass(className, executor);
+            loadAndRunClass(className, executor, runtimeFolder);
             return true;
         }
         return false;
     }
 
     /**
+     * Compile and load a Java file to memory (stores in Loaded folder)
+     */
+    public boolean compileAndLoad(File javaFile, CommandSender executor) {
+        // Security check
+        if (!JavaExecutionControl.isExecutionSafe(javaFile, executor)) {
+            return false;
+        }
+
+        executor.sendMessage("§a[Coder] Compiling " + javaFile.getName() + "...");
+        long startTime = System.currentTimeMillis();
+        String className = javaFile.getName().replace(".java", "");
+
+        if (compile(javaFile, executor, loadedFolder)) {
+            long duration = System.currentTimeMillis() - startTime;
+            executor.sendMessage("§a[Coder] Compilation successful (" + duration + "ms)");
+            executor.sendMessage("§a[Coder] Class stored in Loaded folder");
+            
+            loadAndRunClass(className, executor, loadedFolder);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Unload a previously loaded Java class
+     */
+    public void unloadClass(String className, CommandSender executor) {
+        if (loadedClasses.remove(className) != null) {
+            executor.sendMessage("§a[Coder] Class unloaded: " + className);
+            plugin.getLogger().info("[Coder] Unloaded class: " + className);
+        } else {
+            executor.sendMessage("§c[Coder] Class not found in memory: " + className);
+        }
+    }
+
+    /**
+     * List all loaded classes
+     */
+    public void listLoadedClasses(CommandSender executor) {
+        if (loadedClasses.isEmpty()) {
+            executor.sendMessage("§c[Coder] No classes currently loaded");
+            return;
+        }
+
+        executor.sendMessage("§a[Coder] ========== Loaded Classes ==========");
+        int count = 1;
+        for (String className : loadedClasses.keySet()) {
+            executor.sendMessage("§a  " + count + ". " + className);
+            count++;
+        }
+        executor.sendMessage("§a[Coder] =====================================");
+    }
+
+    /**
      * Compile a Java file to bytecode
      */
-    private boolean compile(File javaFile, CommandSender executor) {
+    private boolean compile(File javaFile, CommandSender executor, File outputFolder) {
         javax.tools.JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
-            executor.sendMessage("§c[JavaFixer] Java Compiler not available on this system");
+            executor.sendMessage("§c[Coder] Java Compiler not available on this system");
             return false;
         }
 
@@ -77,7 +146,7 @@ public class JavaCompiler {
 
         // Compile
         String[] args = {
-            "-d", javaClassesFolder.getAbsolutePath(),
+            "-d", outputFolder.getAbsolutePath(),
             "-cp", classPath.toString(), 
             "--release", "21",
             javaFile.getAbsolutePath()
@@ -93,7 +162,7 @@ public class JavaCompiler {
             String errorOutput = errorBuffer.toString();
             ErrorLogging.logCompileError(plugin, javaFile.getName(), errorOutput);
             
-            executor.sendMessage("§c❌ [JavaFixer] Compilation failed!");
+            executor.sendMessage("§c❌ [Coder] Compilation failed!");
             for (String line : errorOutput.split("\n")) {
                 if (!line.trim().isEmpty()) {
                     executor.sendMessage("§4║ §c" + line.replace("\r", ""));
@@ -106,30 +175,31 @@ public class JavaCompiler {
     /**
      * Load and execute a compiled Java class
      */
-    private void loadAndRunClass(String className, CommandSender executor) {
+    private void loadAndRunClass(String className, CommandSender executor, File classFolder) {
         try {
-            URL[] urls = new URL[]{javaClassesFolder.toURI().toURL()};
+            URL[] urls = new URL[]{classFolder.toURI().toURL()};
             try (URLClassLoader classLoader = new URLClassLoader(urls, plugin.getClass().getClassLoader())) {
                 Class<?> loadedClass = Class.forName(className, true, classLoader);
+                loadedClasses.put(className, loadedClass);
                 
                 // Try main method first
                 try {
                     java.lang.reflect.Method mainMethod = loadedClass.getMethod("main", String[].class);
                     mainMethod.invoke(null, (Object) new String[]{});
-                    executor.sendMessage("§a[JavaFixer] Execution complete");
+                    executor.sendMessage("§a[Coder] Execution complete");
                     return; 
                 } catch (NoSuchMethodException ignored) {}
 
                 // Try no-arg constructor
                 try {
                     loadedClass.getDeclaredConstructor().newInstance();
-                    executor.sendMessage("§a[JavaFixer] Execution complete");
+                    executor.sendMessage("§a[Coder] Execution complete");
                 } catch (NoSuchMethodException e) {
-                    executor.sendMessage("§a[JavaFixer] Class loaded (no main method or constructor)");
+                    executor.sendMessage("§a[Coder] Class loaded (no main method or constructor)");
                 }
             }
         } catch (Exception e) {
-            executor.sendMessage("§c[JavaFixer] Execution error: " + e.getMessage());
+            executor.sendMessage("§c[Coder] Execution error: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -151,6 +221,7 @@ public class JavaCompiler {
      * Clear build cache on disable
      */
     public void clearCache() {
+        loadedClasses.clear();
         File[] files = javaClassesFolder.listFiles();
         if (files != null) {
             for (File file : files) {

@@ -1,4 +1,4 @@
-package me.coder.javafixer;
+package me.coder;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
