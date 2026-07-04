@@ -14,10 +14,11 @@ public class JavaExecutionControl {
         "java.lang.Process",
         "/bin/sh",
         "/bin/bash",
-        "cmd.exe",
         "powershell",
         "wmic",
-        "dmidecode"
+        "dmidecode",
+        "cmd.exe",
+        "pwsh"
     );
 
     /**

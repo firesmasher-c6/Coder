@@ -6,6 +6,7 @@ import me.coder.manager.ScriptManager;
 import me.coder.manager.VersionManager;
 import me.coder.manager.UserExecutionControl;
 import me.coder.manager.ConfigManager;
+import me.coder.manager.BackupManager;
 import org.bukkit.command.*;
 import java.io.File;
 import java.util.*;
@@ -17,13 +18,15 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     private final VersionManager versionManager;
     private final ConfigManager configManager;
     private final JavaCompiler javaCompiler;
+    private final BackupManager backupManager;
 
-    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler) {
+    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler, BackupManager backupManager) {
         this.plugin = plugin;
         this.scriptManager = scriptManager;
         this.versionManager = versionManager;
         this.configManager = configManager;
         this.javaCompiler = javaCompiler;
+        this.backupManager = backupManager;
     }
 
     @Override
@@ -40,6 +43,36 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         }
 
         String action = args[0].toLowerCase();
+
+        // Handle backup command
+        if (action.equals("backup")) {
+            if (!configManager.isCommandEnabled("backup")) {
+                sender.sendMessage("§c[Coder] The backup command is disabled in config.yml");
+                return true;
+            }
+            backupManager.startBackup(sender);
+            return true;
+        }
+
+        // Handle auto-backup-start command
+        if (action.equals("auto-backup-start")) {
+            if (!configManager.isCommandEnabled("auto-backup-start")) {
+                sender.sendMessage("§c[Coder] The auto-backup-start command is disabled in config.yml");
+                return true;
+            }
+            backupManager.startAutoBackup(sender);
+            return true;
+        }
+
+        // Handle auto-backup-stop command
+        if (action.equals("auto-backup-stop")) {
+            if (!configManager.isCommandEnabled("auto-backup-stop")) {
+                sender.sendMessage("§c[Coder] The auto-backup-stop command is disabled in config.yml");
+                return true;
+            }
+            backupManager.stopAutoBackup(sender);
+            return true;
+        }
 
         // Handle reload command (reloads plugin, scripts, and config)
         if (action.equals("reload")) {
@@ -333,6 +366,18 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         if (configManager.isUpdateJarCommandEnabled()) {
             sender.sendMessage("§a/coder update-jar       §7- Download new version");
         }
+
+        if (configManager.isCommandEnabled("backup")) {
+            sender.sendMessage("§a/coder backup           §7- Create a backup");
+        }
+        
+        if (configManager.isCommandEnabled("auto-backup-start")) {
+            sender.sendMessage("§a/coder auto-backup-start §7- Start auto-backups");
+        }
+        
+        if (configManager.isCommandEnabled("auto-backup-stop")) {
+            sender.sendMessage("§a/coder auto-backup-stop §7- Stop auto-backups");
+        }
         
         sender.sendMessage("§a/coder help [command]   §7- Show command help");
         sender.sendMessage("§6╚═══════════════════════════════════════╝");
@@ -467,6 +512,54 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§6╚═══════════════════════════════════════╝");
                 break;
 
+            case "backup":
+                sender.sendMessage("§6╔═══════════════════════════════════════╗");
+                sender.sendMessage("§6║§f           BACKUP COMMAND             §6║");
+                sender.sendMessage("§6╠═══════════════════════════════════════╣");
+                sender.sendMessage("§aUsage: §f/coder backup");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eDescription:");
+                sender.sendMessage("§7Create an immediate backup of Coder folder");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eFormat: " + configManager.getBackupType());
+                sender.sendMessage("§7Location: §fbackups/");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eNote:");
+                sender.sendMessage("§7  Backup runs asynchronously (doesn't freeze server)");
+                sender.sendMessage("§6╚═══════════════════════════════════════╝");
+                break;
+
+            case "auto-backup-start":
+                sender.sendMessage("§6╔═══════════════════════════════════════╗");
+                sender.sendMessage("§6║§f      AUTO-BACKUP-START COMMAND       §6║");
+                sender.sendMessage("§6╠═══════════════════════════════════════╣");
+                sender.sendMessage("§aUsage: §f/coder auto-backup-start");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eDescription:");
+                sender.sendMessage("§7Start automatic backups on a schedule");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eSchedule: §f" + configManager.getBackupSchedule());
+                sender.sendMessage("§7Format: §f" + configManager.getBackupType());
+                sender.sendMessage("§7");
+                sender.sendMessage("§eNote:");
+                sender.sendMessage("§7  Backups run in background (silent)");
+                sender.sendMessage("§6╚═══════════════════════════════════════╝");
+                break;
+
+            case "auto-backup-stop":
+                sender.sendMessage("§6╔═══════════════════════════════════════╗");
+                sender.sendMessage("§6║§f       AUTO-BACKUP-STOP COMMAND       §6║");
+                sender.sendMessage("§6╠═══════════════════════════════════════╣");
+                sender.sendMessage("§aUsage: §f/coder auto-backup-stop");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eDescription:");
+                sender.sendMessage("§7Stop automatic backups");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eNote:");
+                sender.sendMessage("§7  Can be restarted anytime with auto-backup-start");
+                sender.sendMessage("§6╚═══════════════════════════════════════╝");
+                break;
+
             case "update":
                 sender.sendMessage("§6╔═══════════════════════════════════════╗");
                 sender.sendMessage("§6║§f           UPDATE COMMAND             §6║");
@@ -514,6 +607,9 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             if (configManager.isCancelCommandEnabled()) completions.add("cancel");
             if (configManager.isUpdateCommandEnabled()) completions.add("update");
             if (configManager.isUpdateJarCommandEnabled()) completions.add("update-jar");
+            if (configManager.isCommandEnabled("backup")) completions.add("backup");
+            if (configManager.isCommandEnabled("auto-backup-start")) completions.add("auto-backup-start");
+            if (configManager.isCommandEnabled("auto-backup-stop")) completions.add("auto-backup-stop");
             
             completions.add("reload-config");
             completions.add("help");

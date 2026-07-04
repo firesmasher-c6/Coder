@@ -11,7 +11,7 @@
 plugin:
   # Enable or disable the entire plugin
   enabled: true
-  
+
   # Supported Languages - Set to true to enable, false to disable
   languages:
     # Enable Python script execution (.py files)
@@ -20,6 +20,20 @@ plugin:
     lua: true
     # Enable Java script compilation and execution (.java files)
     java: true
+
+  # Backup Settings
+  backups:
+    # Backup format (ZIP - works on all systems)
+    type: "zip"
+    # Backup scheduling
+    schedule:
+      # Create backup when plugin starts
+      on-start: false
+      # Cancel auto-backup when plugin disables
+      cancel-on-disable: true
+      # Backup interval (format: '1m', '30m', '1h', '2h', etc.)
+      # Allowed: 1-60 with m/h/d suffix (minutes/hours/days)
+      every: "1h"
 
 # Command Settings
 # Enable or disable specific commands
@@ -42,9 +56,15 @@ commands:
     confirm: true
     # /coder cancel - Cancel execution of a pending dangerous script
     cancel: true
+    # /coder backup - Create a backup of the Coder folder
+    backup: true
+    # /coder auto-backup-start - Start automatic backups
+    auto-backup-start: true
+    # /coder auto-backup-stop - Stop automatic backups
+    auto-backup-stop: true
 
 # Logging Settings
-Logs:
+logs:
   # Log general script execution errors to Logs/Error-Logs/
   errors: true
   # Log Java compilation errors to Logs/JavaCompile-Errors/

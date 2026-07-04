@@ -154,14 +154,31 @@ public class ConfigManager {
      * Check if error logging is enabled
      */
     public boolean isErrorLoggingEnabled() {
-        return config.getBoolean("Logs.errors", true);
+        return config.getBoolean("logs.errors", true);
     }
     
     /**
      * Check if compile error logging is enabled
      */
     public boolean isCompileErrorLoggingEnabled() {
-        return config.getBoolean("Logs.compile-errors", true);
+        return config.getBoolean("logs.compile-errors", true);
+    }
+    
+    // Backup Settings
+    public String getBackupType() {
+        return config.getString("plugin.backups.type", "zip");
+    }
+    
+    public String getBackupSchedule() {
+        return config.getString("plugin.backups.schedule.every", "1h");
+    }
+    
+    public boolean shouldBackupOnStart() {
+        return config.getBoolean("plugin.backups.schedule.on-start", false);
+    }
+    
+    public boolean shouldCancelOnDisable() {
+        return config.getBoolean("plugin.backups.schedule.cancel-on-disable", true);
     }
     
     /**
