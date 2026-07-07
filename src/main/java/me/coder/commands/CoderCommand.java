@@ -198,6 +198,32 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Handle enable-activity-logging command
+        if (action.equals("enable-activity-logging")) {
+            if (!configManager.isCommandEnabled("enable-activity-logging")) {
+                sender.sendMessage("§c[Coder] The enable-activity-logging command is disabled in config.yml");
+                return true;
+            }
+            
+            plugin.getConfig().set("actions-manager.enabled", true);
+            plugin.saveConfig();
+            sender.sendMessage("§a[Coder] Activity logging has been §aenabled§a!");
+            return true;
+        }
+
+        // Handle disable-activity-logging command
+        if (action.equals("disable-activity-logging")) {
+            if (!configManager.isCommandEnabled("disable-activity-logging")) {
+                sender.sendMessage("§c[Coder] The disable-activity-logging command is disabled in config.yml");
+                return true;
+            }
+            
+            plugin.getConfig().set("actions-manager.enabled", false);
+            plugin.saveConfig();
+            sender.sendMessage("§a[Coder] Activity logging has been §cdisabled§a!");
+            return true;
+        }
+
         // All other commands need a filename
         if (args.length < 2) {
             showCommandHelp(sender, action);

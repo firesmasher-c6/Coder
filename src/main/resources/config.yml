@@ -62,6 +62,10 @@ commands:
     auto-backup-start: true
     # /coder auto-backup-stop - Stop automatic backups
     auto-backup-stop: true
+    # /coder enable-activity-logging - Enable activity logging
+    enable-activity-logging: true
+    # /coder disable-activity-logging - Disable activity logging
+    disable-activity-logging: true
 
 # Logging Settings
 logs:
@@ -69,3 +73,10 @@ logs:
   errors: true
   # Log Java compilation errors to Logs/JavaCompile-Errors/
   compile-errors: true
+
+# Action Logger Manager Settings
+actions-manager:
+  # Enable Activity Logging
+  enabled: true
+  # Compress made .log files into .log.gz
+  compress-logs: true

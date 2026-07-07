@@ -180,6 +180,35 @@ public class ConfigManager {
     public boolean shouldCancelOnDisable() {
         return config.getBoolean("plugin.backups.schedule.cancel-on-disable", true);
     }
+
+    // Action Logger Manager Settings
+    /**
+     * Check if activity logging is enabled
+     */
+    public boolean isActivityLoggingEnabled() {
+        return config.getBoolean("actions-manager.enabled", true);
+    }
+
+    /**
+     * Check if log compression is enabled
+     */
+    public boolean isLogCompressionEnabled() {
+        return config.getBoolean("actions-manager.compress-logs", true);
+    }
+
+    /**
+     * Check if enable-activity-logging command is enabled
+     */
+    public boolean isEnableActivityLoggingCommandEnabled() {
+        return isCommandEnabled("enable-activity-logging");
+    }
+
+    /**
+     * Check if disable-activity-logging command is enabled
+     */
+    public boolean isDisableActivityLoggingCommandEnabled() {
+        return isCommandEnabled("disable-activity-logging");
+    }
     
     /**
      * Save config to file

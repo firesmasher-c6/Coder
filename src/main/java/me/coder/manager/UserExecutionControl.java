@@ -85,13 +85,15 @@ public class UserExecutionControl {
         try {
             List<String> lines = Files.readAllLines(file.toPath());
             
-            for (String line : lines) {
+            for (int lineNum = 0; lineNum < lines.size(); lineNum++) {
+                String line = lines.get(lineNum);
+                
                 // Check for Python imports
                 if (line.trim().startsWith("import ") || line.trim().startsWith("from ")) {
                     for (String dangerous : DANGEROUS_IMPORTS) {
                         if (line.toLowerCase().contains(dangerous.toLowerCase())) {
                             if (!found.contains(dangerous)) {
-                                found.add(dangerous);
+                                found.add(dangerous + " (line " + (lineNum + 1) + ")");
                             }
                         }
                     }
@@ -102,7 +104,7 @@ public class UserExecutionControl {
                     for (String dangerous : DANGEROUS_IMPORTS) {
                         if (line.contains(dangerous)) {
                             if (!found.contains(dangerous)) {
-                                found.add(dangerous);
+                                found.add(dangerous + " (line " + (lineNum + 1) + ")");
                             }
                         }
                     }
@@ -113,6 +115,74 @@ public class UserExecutionControl {
         }
         
         return found;
+    }
+
+    /**
+     * Scan script line by line and check what it does (strict UEC)
+     * @param file The script file to scan
+     * @return ScriptAnalysis result with findings
+     */
+    public static ScriptAnalysis scanScriptLineLine(File file) {
+        ScriptAnalysis analysis = new ScriptAnalysis();
+        
+        try {
+            List<String> lines = Files.readAllLines(file.toPath());
+            
+            for (int lineNum = 0; lineNum < lines.size(); lineNum++) {
+                String line = lines.get(lineNum).trim();
+                
+                // Skip comments and empty lines
+                if (line.isEmpty() || line.startsWith("//") || line.startsWith("#") || line.startsWith("*")) {
+                    continue;
+                }
+                
+                // Analyze what the line does
+                analyzeLineAction(line, lineNum + 1, analysis);
+            }
+        } catch (IOException e) {
+            analysis.addError("Failed to read script: " + e.getMessage());
+        }
+        
+        return analysis;
+    }
+
+    /**
+     * Analyze what a single line of code does
+     */
+    private static void analyzeLineAction(String line, int lineNum, ScriptAnalysis analysis) {
+        // File operations
+        if (line.contains("File") && (line.contains("delete") || line.contains("write"))) {
+            analysis.addAction("Line " + lineNum + ": File operation detected - " + line);
+        }
+        
+        // Network operations
+        if (line.contains("Socket") || line.contains("ServerSocket") || line.contains("URL")) {
+            analysis.addAction("Line " + lineNum + ": Network operation detected - " + line);
+        }
+        
+        // Process execution
+        if (line.contains("Runtime") || line.contains("ProcessBuilder")) {
+            analysis.addAction("Line " + lineNum + ": Process execution detected - " + line);
+        }
+        
+        // System operations
+        if (line.contains("System.exit") || line.contains("System.setProperty")) {
+            analysis.addAction("Line " + lineNum + ": System operation detected - " + line);
+        }
+        
+        // Reflection (can bypass security)
+        if (line.contains("getDeclaredMethod") || line.contains("getMethod") || line.contains("setAccessible")) {
+            analysis.addAction("Line " + lineNum + ": Reflection usage detected - " + line);
+        }
+        
+        // String concatenation bypass attempt
+        if (line.contains("\"") && line.contains("+")) {
+            // Check for common bypass patterns
+            if (line.toLowerCase().contains("tem") || line.toLowerCase().contains("process") || 
+                line.toLowerCase().contains("runtime")) {
+                analysis.addWarning("Line " + lineNum + ": Potential concatenation bypass - " + line);
+            }
+        }
     }
 
     /**
@@ -185,6 +255,63 @@ public class UserExecutionControl {
          */
         public boolean isExpired() {
             return System.currentTimeMillis() - createdAt > 300000; // 5 minutes
+        }
+    }
+
+    /**
+     * Inner class for detailed script analysis results
+     */
+    public static class ScriptAnalysis {
+        private List<String> actions;
+        private List<String> warnings;
+        private List<String> errors;
+
+        public ScriptAnalysis() {
+            this.actions = new ArrayList<>();
+            this.warnings = new ArrayList<>();
+            this.errors = new ArrayList<>();
+        }
+
+        public void addAction(String action) {
+            actions.add(action);
+        }
+
+        public void addWarning(String warning) {
+            warnings.add(warning);
+        }
+
+        public void addError(String error) {
+            errors.add(error);
+        }
+
+        public List<String> getActions() {
+            return actions;
+        }
+
+        public List<String> getWarnings() {
+            return warnings;
+        }
+
+        public List<String> getErrors() {
+            return errors;
+        }
+
+        public boolean isSafe() {
+            return errors.isEmpty() && warnings.isEmpty();
+        }
+
+        public String getSummary() {
+            StringBuilder sb = new StringBuilder();
+            if (!actions.isEmpty()) {
+                sb.append("Actions: ").append(actions.size()).append("\n");
+            }
+            if (!warnings.isEmpty()) {
+                sb.append("Warnings: ").append(warnings.size()).append("\n");
+            }
+            if (!errors.isEmpty()) {
+                sb.append("Errors: ").append(errors.size()).append("\n");
+            }
+            return sb.toString();
         }
     }
 }

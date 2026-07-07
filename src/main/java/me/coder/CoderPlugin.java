@@ -68,7 +68,7 @@ public class CoderPlugin extends JavaPlugin {
 
     private void initializeAPI() {
         getLogger().info("[Coder] Initializing Coder API...");
-        CoderAPI api = CoderAPI.getInstance();
+        CoderAPI.getInstance();
         getLogger().info("[Coder] ✓ Coder API initialized");
     }
 

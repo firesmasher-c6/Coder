@@ -1,16 +1,27 @@
-# Coder v2.2.1
+# Coder v2.2.6
 **The Most Powerful Scripting Minecraft Plugin Allowing In Use Of Java, Lua, And Python.**
 
 Coder allows you to create and execute **.py, .java, and .lua** files.
 
 ---
 
-## 🚀 What's New in 2.2.1
-* **Automated Addon Security Check:**
-    * **For safety, Coder now requires a VERIFIED.vf file on your plugin to make sure you are not hijacking coder to run blocked scripts.**
-* **Enhanced API:**
-  * **Upgraded Coder API for more methods.**
-* **Addon Security. All addons that dont have "VERIFIED.vf" file is immediately rejected but, addon will still work but marked as "Rejected".
+## 🚀 What's New in 2.2.6
+* **Removed Strict Addon Security Check:**
+    * **Addons now dont require a VERFIED.vf file.**
+* **Enhanced User Execution Control:**
+    * **Safer and smarter UEC.**
+* **Better Memory Loading:**
+    * **Actively runs all scripts (`.class`) on ./Coder/JavaClasses/Loaded/**
+* **Real Bukkit Interactions:**
+    * **Runs bukkit syntaxes and let it interact with your server**
+* **Advanced Java Execution Control (JEC):**
+    * **Renamed to `Java Script Manager (JSM)`**
+    * **Advanced JEC to protect your host's machine**
+* **Action/Activity Logger Manager (ALM):**
+    * **Configurable at `config.yml` and logs every action you make**
+* **New Commands:**
+    * **`/coder enable-activity-logging` - Enables action logging**
+    * **`/coder disable-activity-logging` - Disbles action logging**
   
 ---
 
@@ -43,6 +54,8 @@ Place all your files in the following directory:
  * `/coder update` - fetches the latest version, download link from the official website.
 * `/coder update-jar` - Downloads the latest version of the plugin.
 * `/coder reload-config` - reloads the main configuration file.
+* `/coder enable-activity-logging` - Enables activity logging.
+* `/coder disable-activity-logging` - Disables activity logging.
 
 ## ⚙️ config.yml
 ```yaml
@@ -110,6 +123,10 @@ commands:
     auto-backup-start: true
     # /coder auto-backup-stop - Stop automatic backups
     auto-backup-stop: true
+    # /coder enable-activity-logging - Enable activity logging
+    enable-activity-logging: true
+    # /coder disable-activity-logging - Disable activity logging
+    disable-activity-logging: true
 
 # Logging Settings
 logs:
@@ -117,4 +134,11 @@ logs:
   errors: true
   # Log Java compilation errors to Logs/JavaCompile-Errors/
   compile-errors: true
+
+# Action Logger Manager Settings
+actions-manager:
+  # Enable Activity Logging
+  enabled: true
+  # Compress made .log files into .log.gz
+  compress-logs: true
 ```

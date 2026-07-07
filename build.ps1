@@ -1,4 +1,9 @@
 # =================================================================
+# UNIVERSAL BUILD SCRIPT - Works from any directory
+# Place in PATH and call as: buildplugin
+# =================================================================
+
+# =================================================================
 # 1. USER PROMPT (CHOOSE BUILD TOOL)
 # =================================================================
 Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INPUT" -ForegroundColor Cyan -NoNewline; Write-Host "] " -ForegroundColor DarkGray -NoNewline; 
@@ -18,7 +23,7 @@ if ($choice -eq "v") {
     Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Blue -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Checking Gradle Wrapper Version..." -ForegroundColor Cyan
     
     # Safe check for Gradle Wrapper to handle missing or broken jar files gracefully
-    if (Test-Path ".\gradlew.bat") {
+    if (Test-Path "gradlew.bat") {
         try {
             # Redirecting standard error so native Java crashes can be caught cleanly
             & .\gradlew.bat -version 2>$null
@@ -34,16 +39,17 @@ if ($choice -eq "v") {
 
 if ($choice -eq "c") {
     Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Blue -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Cleaning up folders..." -ForegroundColor Cyan
-    Remove-Item -Path ".\build" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path ".\target" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path ".\.gradle" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path ".\gradle" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path "target" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path ".gradle" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path "gradle" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "INFO" -ForegroundColor Blue -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Cleanup complete!" -ForegroundColor Green
     Exit 0
 }
 
 if ($choice -ne "m" -and $choice -ne "g" -and $choice -ne "gw") {
     Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "ERROR" -ForegroundColor Red -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Invalid choice. Exiting script." -ForegroundColor Red
-    Exit
+    Exit 1
 }
 
 # =================================================================
@@ -51,12 +57,12 @@ if ($choice -ne "m" -and $choice -ne "g" -and $choice -ne "gw") {
 # =================================================================
 Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ===================================" -ForegroundColor Yellow
 Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Cleaning up old build files..." -ForegroundColor Yellow
-Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Removing .\build and .\target folders" -ForegroundColor Yellow
+Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " Removing build and target folders" -ForegroundColor Yellow
 Write-Host "[" -ForegroundColor DarkGray -NoNewline; Write-Host "WARN" -ForegroundColor Yellow -NoNewline; Write-Host "]" -ForegroundColor DarkGray -NoNewline; Write-Host " ===================================" -ForegroundColor Yellow
 
-# Force delete both directories silently if they exist
-Remove-Item -Path ".\build" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path ".\target" -Recurse -Force -ErrorAction SilentlyContinue
+# Force delete both directories silently if they exist (relative to current directory)
+Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "target" -Recurse -Force -ErrorAction SilentlyContinue
 
 # =================================================================
 # 3. EXECUTION
@@ -87,7 +93,7 @@ if ($choice -eq "g") {
     try {
         $needsGeneration = $false
 
-        if (Test-Path ".\gradlew.bat") {
+        if (Test-Path "gradlew.bat") {
             Write-Host "Verifying existing wrapper..." -ForegroundColor Yellow
             # Check wrapper safely here as well
             try {

@@ -1,5 +1,7 @@
 package me.coder;
 
+import me.coder.manager.JavaScriptManager;
+import me.coder.manager.BukkitInteractionHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.Plugin;
@@ -19,12 +21,16 @@ public class JavaCompiler {
     private final File loadedFolder;
     private final File runtimeFolder;
     private final Map<String, Class<?>> loadedClasses = new HashMap<>();
+    private final JavaScriptManager scriptManager;
+    private final BukkitInteractionHandler bukkitHandler;
 
     public JavaCompiler(Plugin plugin, File javaClassesFolder) {
         this.plugin = plugin;
         this.javaClassesFolder = javaClassesFolder;
         this.loadedFolder = new File(javaClassesFolder, "Loaded");
         this.runtimeFolder = new File(javaClassesFolder, "Runtime");
+        this.scriptManager = new JavaScriptManager((org.bukkit.plugin.java.JavaPlugin) plugin);
+        this.bukkitHandler = new BukkitInteractionHandler((org.bukkit.plugin.java.JavaPlugin) plugin);
         
         // Create folders if they don't exist
         if (!loadedFolder.exists()) {
@@ -39,8 +45,14 @@ public class JavaCompiler {
      * Compile and execute a Java file (stores in Runtime folder)
      */
     public boolean compileAndExecute(File javaFile, CommandSender executor) {
-        // Security check
-        if (!JavaExecutionControl.isExecutionSafe(javaFile, executor)) {
+        // Security check using new JavaScriptManager (JSM)
+        try {
+            if (!scriptManager.validateScript(javaFile)) {
+                executor.sendMessage("§c[Coder] Script validation failed: " + scriptManager.getBlockReason(javaFile));
+                return false;
+            }
+        } catch (Exception e) {
+            executor.sendMessage("§c[Coder] Error validating script: " + e.getMessage());
             return false;
         }
 
@@ -62,8 +74,14 @@ public class JavaCompiler {
      * Compile and load a Java file to memory (stores in Loaded folder)
      */
     public boolean compileAndLoad(File javaFile, CommandSender executor) {
-        // Security check
-        if (!JavaExecutionControl.isExecutionSafe(javaFile, executor)) {
+        // Security check using new JavaScriptManager (JSM)
+        try {
+            if (!scriptManager.validateScript(javaFile)) {
+                executor.sendMessage("§c[Coder] Script validation failed: " + scriptManager.getBlockReason(javaFile));
+                return false;
+            }
+        } catch (Exception e) {
+            executor.sendMessage("§c[Coder] Error validating script: " + e.getMessage());
             return false;
         }
 
@@ -75,6 +93,13 @@ public class JavaCompiler {
             long duration = System.currentTimeMillis() - startTime;
             executor.sendMessage("§a[Coder] Compilation successful (" + duration + "ms)");
             executor.sendMessage("§a[Coder] Class stored in Loaded folder");
+            
+            // Also register with BukkitInteractionHandler for Bukkit integration
+            File classFile = new File(loadedFolder, className + ".class");
+            if (classFile.exists()) {
+                bukkitHandler.loadClassFile(classFile);
+                executor.sendMessage("§a[Coder] Class registered for Bukkit interaction");
+            }
             
             loadAndRunClass(className, executor, loadedFolder);
             return true;
@@ -246,5 +271,26 @@ public class JavaCompiler {
             }
         }
         directory.delete();
+    }
+
+    /**
+     * Get the BukkitInteractionHandler for Java class Bukkit integration
+     */
+    public BukkitInteractionHandler getBukkitHandler() {
+        return bukkitHandler;
+    }
+
+    /**
+     * Get the JavaScriptManager for strict Java security validation
+     */
+    public JavaScriptManager getJavaScriptManager() {
+        return scriptManager;
+    }
+
+    /**
+     * Cleanup handlers on disable
+     */
+    public void cleanup() {
+        bukkitHandler.cleanup();
     }
 }

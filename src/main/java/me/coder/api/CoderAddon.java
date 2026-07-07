@@ -2,9 +2,8 @@ package me.coder.api;
 
 import org.bukkit.command.CommandSender;
 import java.util.Map;
-import java.io.File;
 
-public interface CoderAddon extends CoderAddonSecurity {
+public interface CoderAddon {
     
     String getName();
     
@@ -153,10 +152,6 @@ public interface CoderAddon extends CoderAddonSecurity {
     }
     
     default boolean modifiesExecution() {
-        return false;
-    }
-    
-    default boolean addsSecurity() {
         return false;
     }
     
