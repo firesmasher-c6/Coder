@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "Removing PowerShell package..."
+sudo apt-get purge -y powershell
+
+echo "Cleaning up installer packages..."
+rm -f packages-microsoft-prod.deb
+
+echo "Removing configuration and history directories..."
+rm -rf ~/.config/powershell ~/.local/share/powershell
+
+echo "PowerShell completely removed."

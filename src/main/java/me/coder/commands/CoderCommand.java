@@ -2,6 +2,7 @@ package me.coder.commands;
 
 import me.coder.CoderPlugin;
 import me.coder.JavaCompiler;
+import me.coder.expansion.ExpansionManager;
 import me.coder.manager.ScriptManager;
 import me.coder.manager.VersionManager;
 import me.coder.manager.UserExecutionControl;
@@ -13,20 +14,22 @@ import java.util.*;
 
 public class CoderCommand implements CommandExecutor, TabCompleter {
 
-    private final ScriptManager scriptManager;
     private final CoderPlugin plugin;
+    private final ScriptManager scriptManager;
     private final VersionManager versionManager;
     private final ConfigManager configManager;
     private final JavaCompiler javaCompiler;
     private final BackupManager backupManager;
+    private final ExpansionCommandHandler expansionCommandHandler;
 
-    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler, BackupManager backupManager) {
+    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler, BackupManager backupManager, ExpansionManager expansionManager) {
         this.plugin = plugin;
         this.scriptManager = scriptManager;
         this.versionManager = versionManager;
         this.configManager = configManager;
         this.javaCompiler = javaCompiler;
         this.backupManager = backupManager;
+        this.expansionCommandHandler = new ExpansionCommandHandler(expansionManager);
     }
 
     @Override
@@ -154,6 +157,15 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             }
             versionManager.handleUpdateJarCommand(sender);
             return true;
+        }
+
+        // Handle expansion commands
+        if (action.equals("expansion")) {
+            if (!sender.hasPermission("coder.admin")) {
+                sender.sendMessage("§cYou don't have permission to use this command!");
+                return true;
+            }
+            return expansionCommandHandler.handleCommand(sender, args);
         }
 
         // Handle confirmation commands (no filename needed)
@@ -369,7 +381,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
 
     private void showMainHelp(CommandSender sender) {
         sender.sendMessage("§6╔═══════════════════════════════════════╗");
-        sender.sendMessage("§6║§f      Coder Plugin Help (v2.3.1)     §6║");
+        sender.sendMessage("§6║§f      Coder Plugin Help (v2.2.9)     §6║");
         sender.sendMessage("§6╠═══════════════════════════════════════╣");
         sender.sendMessage("§a/coder run <file>       §7- Execute a script");
         
@@ -404,6 +416,9 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         if (configManager.isCommandEnabled("auto-backup-stop")) {
             sender.sendMessage("§a/coder auto-backup-stop §7- Stop auto-backups");
         }
+
+        sender.sendMessage("§a/coder expansion <sub>  §7- Manage expansions");
+        sender.sendMessage("  §7Use: /coder expansion list|enable|disable|load");
         
         sender.sendMessage("§a/coder help [command]   §7- Show command help");
         sender.sendMessage("§6╚═══════════════════════════════════════╝");
@@ -637,10 +652,15 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             if (configManager.isCommandEnabled("auto-backup-start")) completions.add("auto-backup-start");
             if (configManager.isCommandEnabled("auto-backup-stop")) completions.add("auto-backup-stop");
             
+            completions.add("expansion");
             completions.add("reload-config");
             completions.add("help");
             
             return completions;
+        }
+        
+        if (args.length >= 2 && args[0].equalsIgnoreCase("expansion")) {
+            return expansionCommandHandler.onTabComplete(sender, cmd, alias, args);
         }
         
         if (args.length == 2 && isValidAction(args[0])) {

@@ -2,6 +2,7 @@ package me.coder;
 
 import me.coder.api.CoderAPI;
 import me.coder.commands.CoderCommand;
+import me.coder.expansion.ExpansionManager;
 import me.coder.listener.PlayerJoinListener;
 import me.coder.manager.AddonManager;
 import me.coder.manager.ScriptManager;
@@ -19,6 +20,7 @@ public class CoderPlugin extends JavaPlugin {
     private BackupManager backupManager;
     private AddonManager addonManager;
     private JavaCompiler javaCompiler;
+    private ExpansionManager expansionManager;
 
     @Override
     public void onEnable() {
@@ -48,7 +50,11 @@ public class CoderPlugin extends JavaPlugin {
         // Load and verify all addons
         addonManager.loadAddons();
         
-        CoderCommand cmdHandler = new CoderCommand(this, scriptManager, versionManager, configManager, javaCompiler, backupManager);
+        // Initialize expansion manager
+        this.expansionManager = new ExpansionManager(this);
+        expansionManager.loadAllExpansions();
+        
+        CoderCommand cmdHandler = new CoderCommand(this, scriptManager, versionManager, configManager, javaCompiler, backupManager, expansionManager);
         getCommand("coder").setExecutor(cmdHandler);
         getCommand("coder").setTabCompleter(cmdHandler);
         
@@ -76,6 +82,9 @@ public class CoderPlugin extends JavaPlugin {
     public void onDisable() {
         if (addonManager != null) {
             addonManager.disableAddons();
+        }
+        if (expansionManager != null) {
+            expansionManager.unloadAllExpansions();
         }
         if (versionManager != null) {
             versionManager.stop();
@@ -107,5 +116,9 @@ public class CoderPlugin extends JavaPlugin {
     
     public AddonManager getAddonManager() {
         return addonManager;
+    }
+    
+    public ExpansionManager getExpansionManager() {
+        return expansionManager;
     }
 }
