@@ -1,27 +1,15 @@
-# Coder v2.2.6
+# Coder v2.2.9
 **The Most Powerful Scripting Minecraft Plugin Allowing In Use Of Java, Lua, And Python.**
 
 Coder allows you to create and execute **.py, .java, and .lua** files.
 
 ---
 
-## 🚀 What's New in 2.2.6
-* **Removed Strict Addon Security Check:**
-    * **Addons now dont require a VERFIED.vf file.**
-* **Enhanced User Execution Control:**
-    * **Safer and smarter UEC.**
-* **Better Memory Loading:**
-    * **Actively runs all scripts (`.class`) on ./Coder/JavaClasses/Loaded/**
-* **Real Bukkit Interactions:**
-    * **Runs bukkit syntaxes and let it interact with your server**
-* **Advanced Java Execution Control (JEC):**
-    * **Renamed to `Java Script Manager (JSM)`**
-    * **Advanced JEC to protect your host's machine**
-* **Action/Activity Logger Manager (ALM):**
-    * **Configurable at `config.yml` and logs every action you make**
+## 🚀 What's New in 2.2.9
+* **New Expansions**
+    * **Instead of making addons and have to learn java, make an expansion using json and coder will execute it!**
 * **New Commands:**
-    * **`/coder enable-activity-logging` - Enables action logging**
-    * **`/coder disable-activity-logging` - Disbles action logging**
+    * **`/coder expansion` - a new subcommand for expansions**
   
 ---
 
@@ -54,6 +42,10 @@ Place all your files in the following directory:
  * `/coder update` - fetches the latest version, download link from the official website.
 * `/coder update-jar` - Downloads the latest version of the plugin.
 * `/coder reload-config` - reloads the main configuration file.
+* `/coder backup` - backup.
+* `/coder auto-backup-start` - starts automatic backups
+* `/coder auto-backup-stop` - stops automatic backup.
+* `/coder expansion` - Subcommand for expansions.
 * `/coder enable-activity-logging` - Enables activity logging.
 * `/coder disable-activity-logging` - Disables activity logging.
 
