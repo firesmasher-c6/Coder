@@ -15,7 +15,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 public class VersionManager {
     
     private final Plugin plugin;
-    private final String CURRENT_VERSION = "2.2.9";
+    private final String CURRENT_VERSION = "2.3.1";
     private final String VERSION_URL = "https://codestuff.pages.dev/version/CoderVersion.txt";
     private String latestVersion;
     private String downloadLink;
@@ -30,11 +30,12 @@ public class VersionManager {
      * Start the version check timer
      */
     public void start() {
+        log("info", "Version checker starting. Current version: §f" + CURRENT_VERSION + "§7. Checks every §f12 hours§7.");
         startVersionCheck();
     }
     
     /**
-     * Start periodic version checks (every 6 hours)
+     * Start periodic version checks (every 12 hours)
      */
     private void startVersionCheck() {
         versionCheckTimer = new Timer("Coder-VersionCheck", true);
@@ -43,20 +44,24 @@ public class VersionManager {
             public void run() {
                 checkLatestVersion();
             }
-        }, 0, TimeUnit.HOURS.toMillis(6));
+        }, 0, TimeUnit.HOURS.toMillis(12));
     }
     
     /**
      * Check for latest version from remote
      */
     private void checkLatestVersion() {
+        log("info", "§7Contacting update server: §f" + VERSION_URL);
         try {
             String response = fetchVersionInfo();
             if (response != null && !response.isEmpty()) {
                 parseVersionInfo(response);
+            } else {
+                log("warn", "Update server returned an empty response. Skipping this check.");
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("[Coder] Failed to check version: " + e.getMessage());
+            log("warn", "Could not reach the update server. Check your internet connection.");
+            log("warn", "§7Details: §c" + e.getClass().getSimpleName() + " §7— " + e.getMessage());
         }
     }
     
@@ -73,6 +78,7 @@ public class VersionManager {
         connection.setInstanceFollowRedirects(true);
         
         int status = connection.getResponseCode();
+        log("info", "§7Update server responded with HTTP §f" + status);
         
         if (status == 200 || status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
             try (BufferedReader reader = new BufferedReader(
@@ -86,6 +92,7 @@ public class VersionManager {
             }
         }
         
+        log("warn", "Update server returned unexpected HTTP status §c" + status + "§7. Cannot check for updates.");
         return null;
     }
     
@@ -108,9 +115,24 @@ public class VersionManager {
                 }
             }
             
-            plugin.getLogger().info("[Coder] Version check complete. Latest: " + latestVersion);
+            log("info", "§7Version check complete.");
+            log("info", "§7  Running : §f" + CURRENT_VERSION);
+            log("info", "§7  Latest  : §f" + latestVersion);
+
+            if (isUpdateAvailable()) {
+                log("warn", "§eA new version is available! §7(" + CURRENT_VERSION + " → " + latestVersion + ")");
+                log("warn", "§7Run §f/coder update §7in-game to see details, or §f/coder update-jar §7to install.");
+                if (downloadLink != null && !downloadLink.isEmpty()) {
+                    log("info", "§7Download link: §f" + downloadLink);
+                }
+            } else {
+                log("info", "§aCoder is up to date. §7(" + CURRENT_VERSION + ")");
+            }
+
         } catch (Exception e) {
-            plugin.getLogger().warning("[Coder] Failed to parse version info: " + e.getMessage());
+            log("warn", "Failed to parse the version info response.");
+            log("warn", "§7Raw response was: §f" + response);
+            log("warn", "§7Error: §c" + e.getClass().getSimpleName() + " §7— " + e.getMessage());
         }
     }
     
@@ -161,6 +183,7 @@ public class VersionManager {
         
         if (downloadLink == null || downloadLink.isEmpty()) {
             sender.sendMessage("§f[Coder] §cFailed to get download link. Please check the update manually.");
+            log("warn", "Update-jar was requested but no download link was parsed from the version file.");
             return;
         }
         
@@ -171,8 +194,8 @@ public class VersionManager {
             try {
                 downloadAndInstallUpdate(sender);
             } catch (Exception e) {
-                plugin.getLogger().severe("[Coder] Update failed: " + e.getMessage());
-                sender.sendMessage("§f[Coder] §cUpdate failed: " + e.getMessage());
+                log("severe", "Update process threw an unhandled exception: §c" + e.getClass().getSimpleName() + " §7— " + e.getMessage());
+                sender.sendMessage("§f[Coder] §cUpdate failed unexpectedly. Check the server console for details.");
             }
         });
     }
@@ -185,12 +208,14 @@ public class VersionManager {
         
         // Validate that latest version is greater than current
         if (!isVersionGreater(latestVersion, CURRENT_VERSION)) {
-            sender.sendMessage("§f[CoderVersionManager] §cERROR: STATUS WEB-381");
-            sender.sendMessage("§f[CoderVersionManager] §cERROR: RETURNED A LOWER NUMBER THAN " + CURRENT_VERSION);
-            plugin.getLogger().severe("[Coder] Version validation failed: Web version " + latestVersion + " is not greater than " + CURRENT_VERSION);
+            sender.sendMessage("§f[Coder] §cUpdate aborted: the version on the server is not newer than what you're running.");
+            log("severe", "Update aborted. Version validation failed.");
+            log("severe", "§7  Running : §f" + CURRENT_VERSION);
+            log("severe", "§7  Web     : §c" + latestVersion + " §7(not greater — possible bad version file)");
             return;
         }
         
+        log("info", "§7Starting download of Coder §f" + latestVersion + "§7 from: §f" + downloadLink);
         File tempJar = new File(pluginsDir, "Coder-temp.jar");
         
         sender.sendMessage("§f[Coder] §aDownloading Coder §f" + latestVersion + "§a...");
@@ -198,16 +223,22 @@ public class VersionManager {
         // Download to temp file
         downloadFile(downloadLink, tempJar);
         
+        log("info", "§aDownload complete. §7Saved to: §f" + tempJar.getAbsolutePath());
         sender.sendMessage("§f[Coder] §aDownload complete!");
-        sender.sendMessage("§f[Coder] §eInstalling new version...");
-        
+        sender.sendMessage("§f[Coder] §eVerifying downloaded JAR...");
+
         // Get version from the downloaded jar's plugin.yml
         String downloadedVersion = getVersionFromJar(tempJar);
         if (downloadedVersion == null || downloadedVersion.isEmpty()) {
-            sender.sendMessage("§f[Coder] §cFailed to read version from downloaded JAR");
+            sender.sendMessage("§f[Coder] §cFailed to read version from downloaded JAR. Aborting install.");
+            log("severe", "Could not read plugin.yml version from the downloaded JAR: §f" + tempJar.getName());
+            log("severe", "§7The file may be corrupted or not a valid Coder JAR. Deleting temp file.");
             tempJar.delete();
             return;
         }
+
+        log("info", "§7JAR verified. Packaged version: §f" + downloadedVersion);
+        sender.sendMessage("§f[Coder] §aJAR verified. Installing...");
         
         // Final jar name based on version
         File finalJar = new File(pluginsDir, "Coder-" + downloadedVersion + ".jar");
@@ -217,21 +248,28 @@ public class VersionManager {
             name.startsWith("Coder-") && name.endsWith(".jar") && !name.equals("Coder-temp.jar")
         );
         
-        if (oldJars != null) {
+        if (oldJars != null && oldJars.length > 0) {
+            log("info", "§7Removing §f" + oldJars.length + "§7 old Coder JAR(s)...");
             for (File oldJar : oldJars) {
                 if (oldJar.delete()) {
-                    plugin.getLogger().info("[Coder] Deleted old JAR: " + oldJar.getName());
+                    log("info", "§7  Deleted: §f" + oldJar.getName());
+                } else {
+                    log("warn", "§7  Could not delete: §c" + oldJar.getName() + " §7(file may be locked)");
                 }
             }
         }
         
         // Rename temp to final name
         if (tempJar.renameTo(finalJar)) {
+            log("info", "§aInstall successful. §7Coder §f" + downloadedVersion + " §7is ready at: §f" + finalJar.getName());
             sender.sendMessage("§f[Coder] §aSuccessfully installed Coder §f" + downloadedVersion);
-            sender.sendMessage("§f[Coder] §cPlease restart the server to load the new version.");
+            sender.sendMessage("§f[Coder] §cRestart the server to load the new version.");
         } else {
-            sender.sendMessage("§f[Coder] §cFailed to install JAR. Please check server logs.");
-            plugin.getLogger().severe("[Coder] Failed to rename downloaded JAR");
+            log("severe", "Failed to rename temp JAR to final destination.");
+            log("severe", "§7  From : §f" + tempJar.getAbsolutePath());
+            log("severe", "§7  To   : §f" + finalJar.getAbsolutePath());
+            log("severe", "§7Check that the server has write permissions in the plugins folder.");
+            sender.sendMessage("§f[Coder] §cFailed to finalize the install. Check the server console for details.");
         }
     }
     
@@ -249,9 +287,11 @@ public class VersionManager {
                         );
                     return config.getString("version");
                 }
+            } else {
+                log("warn", "Downloaded JAR has no plugin.yml entry. Is this a valid plugin?");
             }
         } catch (IOException e) {
-            plugin.getLogger().warning("[Coder] Failed to read version from JAR: " + e.getMessage());
+            log("warn", "IOException while reading plugin.yml from JAR: §c" + e.getMessage());
         }
         return null;
     }
@@ -285,6 +325,7 @@ public class VersionManager {
         FileOutputStream output = null;
         
         try {
+            log("info", "§7Opening connection to: §f" + urlString);
             URL url = new URL(urlString);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -298,6 +339,7 @@ public class VersionManager {
             if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
                 String redirectLocation = connection.getHeaderField("Location");
                 if (redirectLocation != null) {
+                    log("info", "§7Following HTTP §f" + status + " §7redirect to: §f" + redirectLocation);
                     connection.disconnect();
                     downloadFile(redirectLocation, destFile);
                     return;
@@ -305,7 +347,7 @@ public class VersionManager {
             }
             
             if (status != 200) {
-                throw new IOException("HTTP status: " + status);
+                throw new IOException("Download server returned HTTP " + status + " for URL: " + urlString);
             }
             
             input = connection.getInputStream();
@@ -313,15 +355,19 @@ public class VersionManager {
             
             byte[] buffer = new byte[4096];
             int bytesRead;
+            long totalBytes = 0;
             while ((bytesRead = input.read(buffer)) != -1) {
                 output.write(buffer, 0, bytesRead);
+                totalBytes += bytesRead;
             }
+            log("info", "§7Downloaded §f" + (totalBytes / 1024) + " KB §7to §f" + destFile.getName());
+
         } finally {
             try {
                 if (input != null) input.close();
                 if (output != null) output.close();
             } catch (IOException e) {
-                plugin.getLogger().warning("[Coder] Error closing streams: " + e.getMessage());
+                log("warn", "Failed to close download streams cleanly: §c" + e.getMessage());
             }
             if (connection != null) connection.disconnect();
         }
@@ -345,6 +391,32 @@ public class VersionManager {
     public void stop() {
         if (versionCheckTimer != null) {
             versionCheckTimer.cancel();
+            log("info", "§7Version check timer stopped.");
         }
+    }
+
+    /**
+     * Central logging helper -- strips color codes for console output
+     */
+    private void log(String level, String message) {
+        String clean = strip(message);
+        switch (level) {
+            case "info":
+                plugin.getLogger().info(clean);
+                break;
+            case "warn":
+                plugin.getLogger().warning(clean);
+                break;
+            case "severe":
+                plugin.getLogger().severe(clean);
+                break;
+            default:
+                plugin.getLogger().info(clean);
+        }
+    }
+
+    /** Remove all Minecraft color/format codes */
+    private String strip(String s) {
+        return s == null ? "" : s.replaceAll("§[0-9a-fk-orA-FK-OR]", "");
     }
 }

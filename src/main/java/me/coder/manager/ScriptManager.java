@@ -45,7 +45,10 @@ public class ScriptManager {
         }
 
         if (UserExecutionControl.hasTerminalCommands(file)) {
-            sender.sendMessage("§c§lError: Error T10!");
+            sender.sendMessage("§4§l[Coder] ✗ Execution Blocked");
+            sender.sendMessage("§c§lReason: §cThis script contains shell or terminal commands.");
+            sender.sendMessage("§7Scripts are not permitted to spawn shell processes (e.g. §f/bin/bash§7, §fRuntime.exec§7, §fsubprocess§7).");
+            sender.sendMessage("§7Remove all terminal-related calls from §f" + fileName + " §7and try again.");
             logError(new Exception("Terminal command detected in: " + fileName), fileName);
             return;
         }

@@ -2,9 +2,9 @@ package me.coder;
 
 import me.coder.api.CoderAPI;
 import me.coder.commands.CoderCommand;
-import me.coder.expansion.ExpansionManager;
 import me.coder.listener.PlayerJoinListener;
 import me.coder.manager.AddonManager;
+import me.coder.manager.EditorManager;
 import me.coder.manager.ScriptManager;
 import me.coder.manager.VersionManager;
 import me.coder.manager.ConfigManager;
@@ -20,7 +20,7 @@ public class CoderPlugin extends JavaPlugin {
     private BackupManager backupManager;
     private AddonManager addonManager;
     private JavaCompiler javaCompiler;
-    private ExpansionManager expansionManager;
+    private EditorManager editorManager;
 
     @Override
     public void onEnable() {
@@ -50,11 +50,9 @@ public class CoderPlugin extends JavaPlugin {
         // Load and verify all addons
         addonManager.loadAddons();
         
-        // Initialize expansion manager
-        this.expansionManager = new ExpansionManager(this);
-        expansionManager.loadAllExpansions();
-        
-        CoderCommand cmdHandler = new CoderCommand(this, scriptManager, versionManager, configManager, javaCompiler, backupManager, expansionManager);
+        this.editorManager = new EditorManager(this);
+
+        CoderCommand cmdHandler = new CoderCommand(this, scriptManager, versionManager, configManager, javaCompiler, backupManager, editorManager);
         getCommand("coder").setExecutor(cmdHandler);
         getCommand("coder").setTabCompleter(cmdHandler);
         
@@ -80,11 +78,11 @@ public class CoderPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (editorManager != null) {
+            editorManager.shutdown();
+        }
         if (addonManager != null) {
             addonManager.disableAddons();
-        }
-        if (expansionManager != null) {
-            expansionManager.unloadAllExpansions();
         }
         if (versionManager != null) {
             versionManager.stop();
@@ -116,9 +114,5 @@ public class CoderPlugin extends JavaPlugin {
     
     public AddonManager getAddonManager() {
         return addonManager;
-    }
-    
-    public ExpansionManager getExpansionManager() {
-        return expansionManager;
     }
 }

@@ -2,12 +2,12 @@ package me.coder.commands;
 
 import me.coder.CoderPlugin;
 import me.coder.JavaCompiler;
-import me.coder.expansion.ExpansionManager;
 import me.coder.manager.ScriptManager;
 import me.coder.manager.VersionManager;
 import me.coder.manager.UserExecutionControl;
 import me.coder.manager.ConfigManager;
 import me.coder.manager.BackupManager;
+import me.coder.manager.EditorManager;
 import org.bukkit.command.*;
 import java.io.File;
 import java.util.*;
@@ -20,16 +20,16 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
     private final ConfigManager configManager;
     private final JavaCompiler javaCompiler;
     private final BackupManager backupManager;
-    private final ExpansionCommandHandler expansionCommandHandler;
+    private final EditorManager editorManager;
 
-    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler, BackupManager backupManager, ExpansionManager expansionManager) {
+    public CoderCommand(CoderPlugin plugin, ScriptManager scriptManager, VersionManager versionManager, ConfigManager configManager, JavaCompiler javaCompiler, BackupManager backupManager, EditorManager editorManager) {
         this.plugin = plugin;
         this.scriptManager = scriptManager;
         this.versionManager = versionManager;
         this.configManager = configManager;
         this.javaCompiler = javaCompiler;
         this.backupManager = backupManager;
-        this.expansionCommandHandler = new ExpansionCommandHandler(expansionManager);
+        this.editorManager = editorManager;
     }
 
     @Override
@@ -159,15 +159,6 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Handle expansion commands
-        if (action.equals("expansion")) {
-            if (!sender.hasPermission("coder.admin")) {
-                sender.sendMessage("§cYou don't have permission to use this command!");
-                return true;
-            }
-            return expansionCommandHandler.handleCommand(sender, args);
-        }
-
         // Handle confirmation commands (no filename needed)
         if (action.equals("confirm")) {
             if (!configManager.isConfirmCommandEnabled()) {
@@ -233,6 +224,38 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             plugin.getConfig().set("actions-manager.enabled", false);
             plugin.saveConfig();
             sender.sendMessage("§a[Coder] Activity logging has been §cdisabled§a!");
+            return true;
+        }
+
+        // Handle editor command
+        if (action.equals("editor")) {
+            if (!sender.hasPermission("coder.admin")) {
+                sender.sendMessage("§cYou don't have permission to use this command!");
+                return true;
+            }
+            if (args.length < 2) {
+                sender.sendMessage("§6[Coder] Editor commands: §fstart§6, §fstop§6, §ftrust <name>§6, §fdoNotTrust <name>");
+                return true;
+            }
+            String sub = args[1].toLowerCase();
+            switch (sub) {
+                case "start":
+                    editorManager.startEditor(sender);
+                    break;
+                case "stop":
+                    editorManager.stopEditor(sender);
+                    break;
+                case "trust":
+                    if (args.length < 3) { sender.sendMessage("§cUsage: /coder editor trust <name>"); break; }
+                    editorManager.trustUser(sender, args[2]);
+                    break;
+                case "donotrust":
+                    if (args.length < 3) { sender.sendMessage("§cUsage: /coder editor doNotTrust <name>"); break; }
+                    editorManager.doNotTrustUser(sender, args[2]);
+                    break;
+                default:
+                    sender.sendMessage("§cUnknown editor subcommand: " + args[1]);
+            }
             return true;
         }
 
@@ -381,7 +404,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
 
     private void showMainHelp(CommandSender sender) {
         sender.sendMessage("§6╔═══════════════════════════════════════╗");
-        sender.sendMessage("§6║§f      Coder Plugin Help (v2.2.9)     §6║");
+        sender.sendMessage("§6║§f  Coder Plugin Help (v" + plugin.getPluginMeta().getVersion() + ")  §6║");
         sender.sendMessage("§6╠═══════════════════════════════════════╣");
         sender.sendMessage("§a/coder run <file>       §7- Execute a script");
         
@@ -417,9 +440,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§a/coder auto-backup-stop §7- Stop auto-backups");
         }
 
-        sender.sendMessage("§a/coder expansion <sub>  §7- Manage expansions");
-        sender.sendMessage("  §7Use: /coder expansion list|enable|disable|load");
-        
+        sender.sendMessage("§a/coder editor start|stop§7- Web file editor");
         sender.sendMessage("§a/coder help [command]   §7- Show command help");
         sender.sendMessage("§6╚═══════════════════════════════════════╝");
     }
@@ -652,17 +673,17 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             if (configManager.isCommandEnabled("auto-backup-start")) completions.add("auto-backup-start");
             if (configManager.isCommandEnabled("auto-backup-stop")) completions.add("auto-backup-stop");
             
-            completions.add("expansion");
             completions.add("reload-config");
+            completions.add("editor");
             completions.add("help");
             
             return completions;
         }
         
-        if (args.length >= 2 && args[0].equalsIgnoreCase("expansion")) {
-            return expansionCommandHandler.onTabComplete(sender, cmd, alias, args);
+        if (args.length == 2 && args[0].equalsIgnoreCase("editor")) {
+            return Arrays.asList("start", "stop", "trust", "doNotTrust");
         }
-        
+
         if (args.length == 2 && isValidAction(args[0])) {
             List<String> fileList = new ArrayList<>();
             File scriptsDir = new File(plugin.getDataFolder(), "scripts");

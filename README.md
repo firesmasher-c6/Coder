@@ -6,10 +6,8 @@ Coder allows you to create and execute **.py, .java, and .lua** files.
 ---
 
 ## 🚀 What's New in 2.2.9
-* **New Expansions**
-    * **Instead of making addons and have to learn java, make an expansion using json and coder will execute it!**
-* **New Commands:**
-    * **`/coder expansion` - a new subcommand for expansions**
+* **Graphical Web Interface Editor (GWI Editor):**
+    * **Let's you create, edit, save, read, etc. In a remote web editor that expires within 30 minutes.**
   
 ---
 
@@ -21,9 +19,10 @@ Coder allows you to create and execute **.py, .java, and .lua** files.
 * **User Execution Control:** Even if your code is `.java`, `.py`, or `.lua` you cannot escape the **UEC**. UEC protects your system.
 * **Automated Backup System:** Automatically backup your scripts.
 * **Manual Backup System:** Manually backup your scripts.
-
-## Caution
-* **Auto Backup** is new and may cause **TPS DROPS** when spammed. To make sure it wont happen please dont spam or backup it when there are backups already inside ``Coder/backups/``. Stacking Backups May Cause It To Be Larger (**GiB**).
+* **Graphical Web Interface Editor (GWI Editor):** Let's you create, edit, save, read, etc. In a remote web editor that expires within 30 minutes.**
+  
+## Good News
+* **GWI Editor** is safe and secure, by using a **SHA256** Session Tokens, it is impossible for other people to guess your session token within 30 minutes.
 
 ## 📖 Quick Start
 Place all your files in the following directory:
@@ -48,89 +47,17 @@ Place all your files in the following directory:
 * `/coder expansion` - Subcommand for expansions.
 * `/coder enable-activity-logging` - Enables activity logging.
 * `/coder disable-activity-logging` - Disables activity logging.
+* `/coder editor [options]` - Lets you use the new **Graphical Web Interface** to edit, create, deletes files.
 
-## ⚙️ config.yml
-```yaml
-# =====================================================
-# = Coder Plugin Configuration File
-# = Made By FireSmasher.
-# =====================================================
-# = Web: https://codestuff.pages.dev
-# = Github: https://github.com/firesmasher-c6/Coder
-# = Modrinth: https://modrinth.com/plugin/coder
-# =====================================================
-
-# Main Plugin Settings
-plugin:
-  # Enable or disable the entire plugin
-  enabled: true
-
-  # Supported Languages - Set to true to enable, false to disable
-  languages:
-    # Enable Python script execution (.py files)
-    python: true
-    # Enable Lua script execution (.lua files)
-    lua: true
-    # Enable Java script compilation and execution (.java files)
-    java: true
-
-  # Backup Settings
-  backups:
-    # Backup format (ZIP - works on all systems)
-    type: "zip"
-    # Backup scheduling
-    schedule:
-      # Create backup when plugin starts
-      on-start: false
-      # Cancel auto-backup when plugin disables
-      cancel-on-disable: true
-      # Backup interval (format: '1m', '30m', '1h', '2h', etc.)
-      # Allowed: 1-60 with m/h/d suffix (minutes/hours/days)
-      every: "1h"
-
-# Command Settings
-# Enable or disable specific commands
-# Defaults to true if not specified
-commands:
-  coder:
-    # /coder run <file> - Execute Python, Lua, or Java scripts
-    run: true
-    # /coder load <file.java> - Load and execute a Java class into memory
-    load: true
-    # /coder unload <classname> - Unload a Java class from memory
-    unload: true
-    # /coder reload [file] - Reload plugin, config, or specific script
-    reload: true
-    # /coder update - Check for plugin updates
-    update: true
-    # /coder update-jar - Download and install latest plugin version
-    update-jar: true
-    # /coder confirm - Confirm execution of a script with dangerous imports
-    confirm: true
-    # /coder cancel - Cancel execution of a pending dangerous script
-    cancel: true
-    # /coder backup - Create a backup of the Coder folder
-    backup: true
-    # /coder auto-backup-start - Start automatic backups
-    auto-backup-start: true
-    # /coder auto-backup-stop - Stop automatic backups
-    auto-backup-stop: true
-    # /coder enable-activity-logging - Enable activity logging
-    enable-activity-logging: true
-    # /coder disable-activity-logging - Disable activity logging
-    disable-activity-logging: true
-
-# Logging Settings
-logs:
-  # Log general script execution errors to Logs/Error-Logs/
-  errors: true
-  # Log Java compilation errors to Logs/JavaCompile-Errors/
-  compile-errors: true
-
-# Action Logger Manager Settings
-actions-manager:
-  # Enable Activity Logging
-  enabled: true
-  # Compress made .log files into .log.gz
-  compress-logs: true
+## ✔️ INFOs
+```text
+coder editor start
+[14:05:25 INFO]: [Coder] Editor started!
+[14:05:25 INFO]: Open this link in your browser:
+[14:05:25 INFO]: https://codestuff-coder.darreltampus39.workers.dev/editor?session=8fb7dec08cc5305e02999c1c6b25212cede1185a62a7016ac7d68e746104b3d1
+[14:05:25 INFO]: When someone connects, you'll be asked to trust them.
+[14:05:35 INFO]: [Coder] Maules wants to access the editor.
+[14:05:35 INFO]: Run /coder editor trust Maules to allow or /coder editor doNotTrust Maules to reject.
+coder editor trust Maules
+[14:05:43 INFO]: [Coder] Trusted Maules. Editor is now unlocked.
 ```
