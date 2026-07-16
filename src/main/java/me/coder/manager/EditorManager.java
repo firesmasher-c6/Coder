@@ -193,7 +193,7 @@ public class EditorManager {
                                     CommandSender player = Bukkit.getPlayerExact(session.playerName);
                                     if (player == null) player = Bukkit.getConsoleSender();
                                     player.sendMessage("§e[Coder] §f" + name + " §ewants to access the editor.");
-                                    player.sendMessage("§7Run §f/coder editor trust " + name + " §7to allow or §f/coder editor doNotTrust " + name + " §7to reject.");
+                                    player.sendMessage("§7Run §f/coder editor trust " + name + " §7to allow or §f/coder editor do-not-trust " + name + " §7to reject.");
                                 });
                             }
                             break;
