@@ -66,6 +66,8 @@ commands:
     enable-activity-logging: true
     # /coder disable-activity-logging - Disable activity logging
     disable-activity-logging: true
+    # /coder editor - Lets you use editor command
+    editor: true
 
 # Logging Settings
 logs:
@@ -80,3 +82,21 @@ actions-manager:
   enabled: true
   # Compress made .log files into .log.gz
   compress-logs: true
+
+# ——— GENERAL SETTINGS ————————————————————————————————————————————————————————
+
+# ——— Config Version —————————————————————————————————————————————
+# 1.0 = No color logs, no ALM, LOGGING, and BACKUPS
+# 2.0 = Modern Version
+configVersion: "2.0"
+# CHANGING CONFIG MAY DISABLE SOME FEATURES.
+
+# ——— EXIT CODE ——————————————————————————————————————————————————
+exitCode: "0"
+
+# Exit Codes
+# ========================
+# 0 - normal exit, shutoffs cleanly. (Recommended)
+# 1 - force kill, error notice, no waiting.
+# 2 - Detailed exit, shows performance (tps, mspt, exitcode, timeDisabled, timeEnabled).
+# ========================

@@ -113,7 +113,7 @@ public class JavaCompiler {
     public void unloadClass(String className, CommandSender executor) {
         if (loadedClasses.remove(className) != null) {
             executor.sendMessage("§a[Coder] Class unloaded: " + className);
-            plugin.getLogger().info("[Coder] Unloaded class: " + className);
+            plugin.getLogger().info("Unloaded class: " + className);
         } else {
             executor.sendMessage("§c[Coder] Class not found in memory: " + className);
         }

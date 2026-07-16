@@ -37,7 +37,7 @@ public class ConfigManager {
     public void checkAndReload() {
         if (configFile.lastModified() > lastModified) {
             loadConfig();
-            plugin.getLogger().info("[Coder] Config reloaded from disk");
+            plugin.getLogger().info("Config reloaded from disk");
         }
     }
     
@@ -209,7 +209,28 @@ public class ConfigManager {
     public boolean isDisableActivityLoggingCommandEnabled() {
         return isCommandEnabled("disable-activity-logging");
     }
-    
+
+    /**
+     * Check if editor command is enabled
+     */
+    public boolean isEditorCommandEnabled() {
+        return isCommandEnabled("editor");
+    }
+
+    /**
+     * Get the configured exit code (0 = normal, 1 = force kill, 2 = detailed)
+     */
+    public String getExitCode() {
+        return config.getString("exitCode", "0");
+    }
+
+    /**
+     * Get the config version string
+     */
+    public String getConfigVersion() {
+        return config.getString("configVersion", "2.0");
+    }
+
     /**
      * Save config to file
      */
@@ -218,7 +239,7 @@ public class ConfigManager {
             config.save(configFile);
             this.lastModified = configFile.lastModified();
         } catch (IOException e) {
-            plugin.getLogger().severe("[Coder] Failed to save config: " + e.getMessage());
+            plugin.getLogger().severe("Failed to save config: " + e.getMessage());
         }
     }
 }

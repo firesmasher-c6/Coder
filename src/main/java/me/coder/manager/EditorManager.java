@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class EditorManager {
 
-    private static final String WORKER_URL = "https://codestuff-coder.darreltampus39.workers.dev";
+    private static final String WORKER_URL = "https://coder-gwieditor.firesmasher.workers.dev";
 
     private final CoderPlugin plugin;
     private final HttpClient http = HttpClient.newHttpClient();
@@ -200,24 +200,74 @@ public class EditorManager {
                         }
                         case "save_file": {
                             String fileName = extractJson(body, "fileName");
-                            String content = extractJson(body, "content");
-                            if (fileName != null && content != null && isAllowedFile(fileName)) {
-                                saveFile(fileName, content);
+                            if (fileName != null && isAllowedFile(fileName)) {
+                                String fileContent = fetchFileContent(token, fileName);
+                                if (fileContent != null) {
+                                    saveFile(fileName, fileContent);
+                                    Bukkit.getScheduler().runTask(plugin, () -> {
+                                        CommandSender player = Bukkit.getPlayerExact(session.playerName);
+                                        if (player != null)
+                                            player.sendMessage("§a[Coder] §f" + session.browserUser + " §asaved §f" + fileName);
+                                    });
+                                }
+                            }
+                            break;
+                        }
+                        case "create_file": {
+                            String fileName = extractJson(body, "fileName");
+                            if (fileName != null && isAllowedFile(fileName)) {
+                                createFile(fileName);
                                 Bukkit.getScheduler().runTask(plugin, () -> {
                                     CommandSender player = Bukkit.getPlayerExact(session.playerName);
                                     if (player != null)
-                                        player.sendMessage("§a[Coder] §f" + session.browserUser + " §asaved §f" + fileName);
+                                        player.sendMessage("§a[Coder] §f" + session.browserUser + " §acreated §f" + fileName);
+                                });
+                            }
+                            break;
+                        }
+                        case "create_folder": {
+                            String folderName = extractJson(body, "folderName");
+                            if (folderName != null && isAllowedFile(folderName)) {
+                                createFolder(folderName);
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    CommandSender player = Bukkit.getPlayerExact(session.playerName);
+                                    if (player != null)
+                                        player.sendMessage("§a[Coder] §f" + session.browserUser + " §acreated folder §f" + folderName);
+                                });
+                            }
+                            break;
+                        }
+                        case "rename": {
+                            String oldName = extractJson(body, "oldName");
+                            String newName = extractJson(body, "newName");
+                            if (oldName != null && newName != null && isAllowedFile(oldName) && isAllowedFile(newName)) {
+                                renameFileOrFolder(oldName, newName);
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    CommandSender player = Bukkit.getPlayerExact(session.playerName);
+                                    if (player != null)
+                                        player.sendMessage("§a[Coder] §f" + session.browserUser + " §arenamed §f" + oldName + " §a→ §f" + newName);
+                                });
+                            }
+                            break;
+                        }
+                        case "delete": {
+                            String fileName = extractJson(body, "fileName");
+                            if (fileName != null && isAllowedFile(fileName)) {
+                                deleteFileOrFolder(fileName);
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    CommandSender player = Bukkit.getPlayerExact(session.playerName);
+                                    if (player != null)
+                                        player.sendMessage("§c[Coder] §f" + session.browserUser + " §cdeleted §f" + fileName);
                                 });
                             }
                             break;
                         }
                         case "session_closed": {
                             String pName = session.playerName;
-                            invalidateSession(token, pName);
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 CommandSender player = Bukkit.getPlayerExact(pName);
                                 if (player != null)
-                                    player.sendMessage("§e[Coder] Editor session was closed from the browser.");
+                                    player.sendMessage("§e[Coder] Browser tab was closed. Session still active — run §f/coder editor stop §eto end it.");
                             });
                             break;
                         }
@@ -273,8 +323,62 @@ public class EditorManager {
             target.getParentFile().mkdirs();
             Files.writeString(target.toPath(), content, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            plugin.getLogger().warning("[Coder] Editor failed to save file: " + fileName + " - " + e.getMessage());
+            plugin.getLogger().warning("Editor failed to save file: " + fileName + " - " + e.getMessage());
         }
+    }
+
+    private void createFile(String fileName) {
+        try {
+            File target = new File(plugin.getDataFolder(), fileName);
+            if (!target.getCanonicalPath().startsWith(plugin.getDataFolder().getCanonicalPath())) return;
+            if (target.exists()) return;
+            target.getParentFile().mkdirs();
+            target.createNewFile();
+        } catch (Exception e) {
+            plugin.getLogger().warning("Editor failed to create file: " + fileName + " - " + e.getMessage());
+        }
+    }
+
+    private void createFolder(String folderName) {
+        try {
+            File target = new File(plugin.getDataFolder(), folderName);
+            if (!target.getCanonicalPath().startsWith(plugin.getDataFolder().getCanonicalPath())) return;
+            target.mkdirs();
+        } catch (Exception e) {
+            plugin.getLogger().warning("Editor failed to create folder: " + folderName + " - " + e.getMessage());
+        }
+    }
+
+    private void renameFileOrFolder(String oldName, String newName) {
+        try {
+            File source = new File(plugin.getDataFolder(), oldName);
+            File dest   = new File(plugin.getDataFolder(), newName);
+            if (!source.getCanonicalPath().startsWith(plugin.getDataFolder().getCanonicalPath())) return;
+            if (!dest.getCanonicalPath().startsWith(plugin.getDataFolder().getCanonicalPath()))   return;
+            if (!source.exists()) return;
+            dest.getParentFile().mkdirs();
+            source.renameTo(dest);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Editor failed to rename: " + oldName + " → " + newName + " - " + e.getMessage());
+        }
+    }
+
+    private void deleteFileOrFolder(String fileName) {
+        try {
+            File target = new File(plugin.getDataFolder(), fileName);
+            if (!target.getCanonicalPath().startsWith(plugin.getDataFolder().getCanonicalPath())) return;
+            deleteRecursively(target);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Editor failed to delete: " + fileName + " - " + e.getMessage());
+        }
+    }
+
+    private void deleteRecursively(File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) for (File child : children) deleteRecursively(child);
+        }
+        file.delete();
     }
 
     // ─── Worker communication ─────────────────────────────────────────────────
@@ -353,15 +457,50 @@ public class EditorManager {
         return sb.toString();
     }
 
-    /** Very minimal JSON string value extractor — no library needed */
+    /** Fetch the current content of a single file from the worker */
+    private String fetchFileContent(String token, String fileName) {
+        try {
+            String encodedName = java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(WORKER_URL + "/api/file?token=" + token + "&name=" + encodedName))
+                    .GET()
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) return null;
+            // Response is {"content":"..."} — extract the content field
+            return extractJson(res.body(), "content");
+        } catch (Exception e) {
+            plugin.getLogger().warning("Editor failed to fetch file content: " + fileName + " - " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** JSON string value extractor that correctly handles escape sequences */
     private String extractJson(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
         if (start == -1) return null;
         start += search.length();
-        int end = json.indexOf("\"", start);
-        if (end == -1) return null;
-        return json.substring(start, end).replace("\\n", "\n").replace("\\\"", "\"").replace("\\\\", "\\");
+
+        StringBuilder result = new StringBuilder();
+        boolean escaped = false;
+        for (int i = start; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (escaped) {
+                if      (c == 'n')  result.append('\n');
+                else if (c == 'r')  result.append('\r');
+                else if (c == 't')  result.append('\t');
+                else                result.append(c); // handles \" and \\
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                break;
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
     }
 
     private String escJson(String s) {

@@ -58,14 +58,14 @@ public class BackupManager {
                 executor.sendMessage("§a[Coder] Time: " + duration + "ms");
                 executor.sendMessage("§a[Coder] Size: " + formatFileSize(fileSize));
                 executor.sendMessage("§a[Coder] Location: backups/" + backupFile.getName());
-                plugin.getLogger().info("[Coder] Backup created: " + backupFile.getName() + " (" + formatFileSize(fileSize) + ") in " + duration + "ms");
+                plugin.getLogger().info("Backup created: " + backupFile.getName() + " (" + formatFileSize(fileSize) + ") in " + duration + "ms");
                 
                 logBackup(backupFile.getName(), fileSize, duration, "MANUAL");
 
                 
             } catch (Exception e) {
                 executor.sendMessage("§c[Coder] Backup failed: " + e.getMessage());
-                plugin.getLogger().severe("[Coder] Backup error: " + e.getMessage());
+                plugin.getLogger().severe("Backup error: " + e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -101,7 +101,7 @@ public class BackupManager {
         
         executor.sendMessage("§a[Coder] ✓ Auto-backup started!");
         executor.sendMessage("§a[Coder] Schedule: Every " + scheduleStr);
-        plugin.getLogger().info("[Coder] Auto-backup started with schedule: " + scheduleStr);
+        plugin.getLogger().info("Auto-backup started with schedule: " + scheduleStr);
     }
     
     // Stop automatic backup
@@ -120,7 +120,7 @@ public class BackupManager {
         autoBackupTask = null;
         
         executor.sendMessage("§a[Coder] ✓ Auto-backup stopped!");
-        plugin.getLogger().info("[Coder] Auto-backup stopped");
+        plugin.getLogger().info("Auto-backup stopped");
     }
     
     // Perform auto backup (silent)
@@ -132,12 +132,12 @@ public class BackupManager {
             createZipBackup(backupFile, null);
             
             long duration = System.currentTimeMillis() - startTime;
-            plugin.getLogger().info("[Coder] Auto-backup completed: " + backupFile.getName() + " in " + duration + "ms");
+            plugin.getLogger().info("Auto-backup completed: " + backupFile.getName() + " in " + duration + "ms");
             
             long fileSize = backupFile.length();
             logBackup(backupFile.getName(), fileSize, duration, "AUTO");
         } catch (Exception e) {
-            plugin.getLogger().severe("[Coder] Auto-backup failed: " + e.getMessage());
+            plugin.getLogger().severe("Auto-backup failed: " + e.getMessage());
         }
     }
     
@@ -215,7 +215,7 @@ public class BackupManager {
     // Check if auto-backup should run on plugin start
     public void checkStartupBackup() {
         if (configManager.shouldBackupOnStart()) {
-            plugin.getLogger().info("[Coder] Creating startup backup...");
+            plugin.getLogger().info("Creating startup backup...");
             try {
                 long startTime = System.currentTimeMillis();
                 File backupFile = createBackupFile();
@@ -224,11 +224,11 @@ public class BackupManager {
                 
                 long duration = System.currentTimeMillis() - startTime;
                 long fileSize = backupFile.length();
-                plugin.getLogger().info("[Coder] Startup backup created: " + backupFile.getName() + " in " + duration + "ms");
+                plugin.getLogger().info("Startup backup created: " + backupFile.getName() + " in " + duration + "ms");
                 
                 logBackup(backupFile.getName(), fileSize, duration, "STARTUP");
             } catch (Exception e) {
-                plugin.getLogger().severe("[Coder] Startup backup failed: " + e.getMessage());
+                plugin.getLogger().severe("Startup backup failed: " + e.getMessage());
             }
         }
     }
@@ -238,7 +238,7 @@ public class BackupManager {
         if (configManager.shouldCancelOnDisable() && autoBackupTask != null) {
             autoBackupTask.cancel();
             autoBackupTask = null;
-            plugin.getLogger().info("[Coder] Auto-backup stopped (plugin disable)");
+            plugin.getLogger().info("Auto-backup stopped (plugin disable)");
         }
     }
     
@@ -277,7 +277,7 @@ public class BackupManager {
                 pw.flush();
             }
         } catch (IOException e) {
-            plugin.getLogger().warning("[Coder] Failed to write backup log: " + e.getMessage());
+            plugin.getLogger().warning("Failed to write backup log: " + e.getMessage());
         }
     }
 }

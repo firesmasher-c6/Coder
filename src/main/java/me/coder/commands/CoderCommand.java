@@ -229,12 +229,16 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
 
         // Handle editor command
         if (action.equals("editor")) {
+            if (!configManager.isEditorCommandEnabled()) {
+                sender.sendMessage("§c[Coder] The editor command is disabled in config.yml");
+                return true;
+            }
             if (!sender.hasPermission("coder.admin")) {
                 sender.sendMessage("§cYou don't have permission to use this command!");
                 return true;
             }
             if (args.length < 2) {
-                sender.sendMessage("§6[Coder] Editor commands: §fstart§6, §fstop§6, §ftrust <name>§6, §fdoNotTrust <name>");
+                sender.sendMessage("§6[Coder] Editor commands: §fstart§6, §fstop§6, §ftrust <name>§6, §fdo-not-trust <name>");
                 return true;
             }
             String sub = args[1].toLowerCase();
@@ -249,8 +253,8 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                     if (args.length < 3) { sender.sendMessage("§cUsage: /coder editor trust <name>"); break; }
                     editorManager.trustUser(sender, args[2]);
                     break;
-                case "donotrust":
-                    if (args.length < 3) { sender.sendMessage("§cUsage: /coder editor doNotTrust <name>"); break; }
+                case "do-not-trust":
+                    if (args.length < 3) { sender.sendMessage("§cUsage: /coder editor do-not-trust <name>"); break; }
                     editorManager.doNotTrustUser(sender, args[2]);
                     break;
                 default:
@@ -674,14 +678,14 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             if (configManager.isCommandEnabled("auto-backup-stop")) completions.add("auto-backup-stop");
             
             completions.add("reload-config");
-            completions.add("editor");
+            if (configManager.isEditorCommandEnabled()) completions.add("editor");
             completions.add("help");
             
             return completions;
         }
         
         if (args.length == 2 && args[0].equalsIgnoreCase("editor")) {
-            return Arrays.asList("start", "stop", "trust", "doNotTrust");
+            return Arrays.asList("start", "stop", "trust", "do-not-trust");
         }
 
         if (args.length == 2 && isValidAction(args[0])) {

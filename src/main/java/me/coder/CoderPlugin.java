@@ -22,6 +22,8 @@ public class CoderPlugin extends JavaPlugin {
     private JavaCompiler javaCompiler;
     private EditorManager editorManager;
 
+    private long enabledAt;
+
     @Override
     public void onEnable() {
         setupFolders();
@@ -58,6 +60,7 @@ public class CoderPlugin extends JavaPlugin {
         
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(versionManager), this);
 
+        this.enabledAt = System.currentTimeMillis();
         getLogger().info("Coder v" + getPluginMeta().getVersion() + " enabled.");
     }
 
@@ -71,29 +74,52 @@ public class CoderPlugin extends JavaPlugin {
     }
 
     private void initializeAPI() {
-        getLogger().info("[Coder] Initializing Coder API...");
+        getLogger().info("Initializing Coder API...");
         CoderAPI.getInstance();
-        getLogger().info("[Coder] ✓ Coder API initialized");
+        getLogger().info("✓ Coder API initialized");
     }
 
     @Override
     public void onDisable() {
-        if (editorManager != null) {
-            editorManager.shutdown();
+        long disabledAt = System.currentTimeMillis();
+        String exitCode = configManager != null ? configManager.getExitCode() : "0";
+
+        // Exit code 1: force kill — skip graceful teardown, just log and bail
+        if ("1".equals(exitCode)) {
+            getLogger().severe("Force-kill exit (exitCode=1). Skipping graceful shutdown.");
+            return;
         }
-        if (addonManager != null) {
-            addonManager.disableAddons();
+
+        // All other codes: graceful teardown
+        if (editorManager != null) editorManager.shutdown();
+        if (addonManager != null)  addonManager.disableAddons();
+        if (versionManager != null) versionManager.stop();
+        if (backupManager != null)  backupManager.stopOnDisable();
+        if (javaCompiler != null)   javaCompiler.clearCache();
+
+        // Exit code 2: detailed shutdown report
+        if ("2".equals(exitCode)) {
+            long uptimeMs   = disabledAt - enabledAt;
+            long uptimeSecs = uptimeMs / 1000;
+            long hours      = uptimeSecs / 3600;
+            long minutes    = (uptimeSecs % 3600) / 60;
+            long seconds    = uptimeSecs % 60;
+
+            double tps  = getServer().getTPS()[0];
+            double mspt = getServer().getAverageTickTime();
+
+            getLogger().warning("═══════════ Shutdown Report ═══════════");
+            getLogger().warning(" Exit Code   : 2 (detailed)");
+            getLogger().warning(" Config Ver  : " + configManager.getConfigVersion());
+            getLogger().warning(String.format(" Uptime      : %dh %dm %ds", hours, minutes, seconds));
+            getLogger().warning(String.format(" TPS (1m avg): %.2f", tps));
+            getLogger().warning(String.format(" MSPT (avg)  : %.2fms", mspt));
+            getLogger().warning(" Enabled At  : " + new java.util.Date(enabledAt));
+            getLogger().warning(" Disabled At : " + new java.util.Date(disabledAt));
+            getLogger().warning("═══════════════════════════════════════");
+        } else {
+            getLogger().info("Coder plugin disabled.");
         }
-        if (versionManager != null) {
-            versionManager.stop();
-        }
-        if (backupManager != null) {
-            backupManager.stopOnDisable();
-        }
-        if (javaCompiler != null) {
-            javaCompiler.clearCache();
-        }
-        getLogger().info("Coder plugin disabled.");
     }
 
     public ScriptManager getScriptManager() {

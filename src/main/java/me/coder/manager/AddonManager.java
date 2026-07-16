@@ -56,7 +56,7 @@ public class AddonManager {
             }
 
             if (addonClass == null) {
-                plugin.getLogger().warning("[Coder] Could not find CoderAddon implementation in: " + addonName);
+                plugin.getLogger().warning("Could not find CoderAddon implementation in: " + addonName);
                 return;
             }
 
@@ -66,9 +66,9 @@ public class AddonManager {
                 try {
                     addon.onEnable();
                     loadedAddons.put(addonName, addon);
-                    plugin.getLogger().info("[Coder] ✓ Addon loaded: " + addon.getName() + " v" + addon.getVersion() + " by " + addon.getAuthor());
+                    plugin.getLogger().info("✓ Addon loaded: " + addon.getName() + " v" + addon.getVersion() + " by " + addon.getAuthor());
                 } catch (Exception e) {
-                    plugin.getLogger().severe("[Coder] Error enabling addon: " + addon.getName());
+                    plugin.getLogger().severe("Error enabling addon: " + addon.getName());
                     e.printStackTrace();
                 }
             }
@@ -83,7 +83,7 @@ public class AddonManager {
             try {
                 addon.onDisable();
             } catch (Exception e) {
-                plugin.getLogger().severe("[Coder] Error disabling addon: " + addon.getName());
+                plugin.getLogger().severe("Error disabling addon: " + addon.getName());
                 e.printStackTrace();
             }
         }
