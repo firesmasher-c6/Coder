@@ -15,6 +15,13 @@ Coder allows you to create custom commands and logic without the bloat of tradit
 *   **Active User Execution Control (UEC):** A robust security layer that intercepts unauthorized scripts and blocks malicious system terminal access.
 *   **VersionManager:** Keep your system up to date effortlessly with one-tap auto-updates.
 *   **Graphical Web Interface (GWI):** Edit, create, and manage your scripts securely in real-time with a VS Code-like web editor.
+*   **Virtual Console Interface (VCI):** Lets you securely run commands via `https://coder-gwieditor.firesmasher.workers.dev/mc-console?=YOUR_TOKEN_HERE`.
+
+### 🛡 GWI Editor Security
+The remote GWI Editor is highly secure. Session connections leverage **SHA-256 tokens** which are mathematically impossible to brute-force or guess. Additionally, every session token automatically expires after 30 minutes of inactivity.
+
+### 🛡 Virtual Console Interface Security
+The custom minecraft console panel blocks /op commands and is secured by `SHA-256` Server Password tokens, to disable this feature, you can go to `/plugins/Coder/.gwi/secure/serverPassword.env` and remove the value of `serverPassword=`.
 
 ---
 
@@ -52,12 +59,25 @@ For complete API details, scripting tutorials, and command walk-throughs, check 
 *   `/coder confirm` – Manually permits a script flagged by the User Execution Control.
 *   `/coder cancel` – Blocks and cancels a script caught by the UEC.
 
+### Virtual Console Interface
+*   `/coder gen-pass` - Generates a unique SHA-256 server password to access `/mc-console/`.
+
 ### GWI Web Editor
 *   `/coder editor start` – Spawns a secure SHA-256 link to access the GWI Web Editor.
 *   `/coder editor trust <username>` – Grants access to a pending connection request.
 *   `/coder editor do-not-trust <username>` – Denies access to a connection request.
 *   `/coder editor stop` – Terminates the active GWI Web Editor session immediately.
 
+#### System & Maintenance
+*   `/coder backup` – Triggers an immediate manual backup of your script directory.
+*   `/coder auto-backup-start` – Starts the automated scheduler for background backups.
+*   `/coder auto-backup-stop` – Halts the background backup scheduler.
+*   `/coder reload-config` – Hot-reloads the main `config.yml` file.
+*   `/coder update` – Checks for updates and retrieves a download link.
+*   `/coder update-jar` – Automatically downloads and replaces the plugin JAR file.
+*   `/coder enable-activity-logging` – Enables activity logging.
+*   `/coder disable-activity-logging` – Disables activity logging.
+   
 ---
 
 ## ⚠️ Security Warning
