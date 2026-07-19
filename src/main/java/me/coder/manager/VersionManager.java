@@ -15,7 +15,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 public class VersionManager {
     
     private final Plugin plugin;
-    private final String CURRENT_VERSION = "2.3.2";
+    private final String CURRENT_VERSION = "2.3.3";
     private final String VERSION_URL = "https://codestuff.pages.dev/version/CoderVersion.txt";
     private String latestVersion;
     private String downloadLink;

@@ -263,6 +263,16 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Handle gen-pass command
+        if (action.equals("gen-pass")) {
+            if (!sender.hasPermission("coder.admin")) {
+                sender.sendMessage("§cYou don't have permission to use this command!");
+                return true;
+            }
+            editorManager.generateServerPassword(sender);
+            return true;
+        }
+
         // All other commands need a filename
         if (args.length < 2) {
             showCommandHelp(sender, action);
@@ -445,6 +455,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         }
 
         sender.sendMessage("§a/coder editor start|stop§7- Web file editor");
+        sender.sendMessage("§a/coder gen-pass         §7- Generate MC Console password");
         sender.sendMessage("§a/coder help [command]   §7- Show command help");
         sender.sendMessage("§6╚═══════════════════════════════════════╝");
     }
@@ -653,6 +664,25 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§6╚═══════════════════════════════════════╝");
                 break;
 
+            case "gen-pass":
+                sender.sendMessage("§6╔═══════════════════════════════════════╗");
+                sender.sendMessage("§6║§f          GEN-PASS COMMAND            §6║");
+                sender.sendMessage("§6╠═══════════════════════════════════════╣");
+                sender.sendMessage("§aUsage: §f/coder gen-pass");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eDescription:");
+                sender.sendMessage("§7Generates a new SHA-256 server password for");
+                sender.sendMessage("§7the MC Console viewer authentication form.");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eSaved to:");
+                sender.sendMessage("§f  plugins/Coder/.gwi/secure/serverPassword.env");
+                sender.sendMessage("§7");
+                sender.sendMessage("§eNote:");
+                sender.sendMessage("§7  Requires §fcoder.admin §7permission.");
+                sender.sendMessage("§7  Copy the printed hash into the browser form.");
+                sender.sendMessage("§6╚═══════════════════════════════════════╝");
+                break;
+
             default:
                 sender.sendMessage("§cUnknown command: " + command);
                 sender.sendMessage("§eRun §f/coder help §efor a list of commands");
@@ -679,6 +709,7 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             
             completions.add("reload-config");
             if (configManager.isEditorCommandEnabled()) completions.add("editor");
+            completions.add("gen-pass");
             completions.add("help");
             
             return completions;
