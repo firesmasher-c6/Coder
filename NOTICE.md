@@ -1,5 +1,4 @@
-# NOTICE v2.4.1 Coder
----
+# NOTICE v2.4.1 Coder (API)
 
 ## Changes:
 * **API Path**

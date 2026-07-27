@@ -1,17 +1,22 @@
-# Coder v2.4.1
+# Coder v2.4.2
 
 > **The most powerful scripting engine for Minecraft. Run Java, Lua, and Python natively on your server with real-time web editing.**
 
+![Compatibility](https://img.shields.io/badge/compatibility-Paper/Purpur-green)
+![Version](https://img.shields.io/badge/version-2.4.2-green)
 ---
 
-## 🚀 What's New in v2.4.1
+## 🚀 What's New in v2.4.2
 
-*   **Fixed GWI Editor Sessions:**
-    *   **Now sessions expire after 30 minutes or more based on how many times the `extend` button at the editor is clicked**
+*   **CoderAPI Dumb Store Fix:**
+    *   **Fixed AddonManager to process CoderAPI**
+        > firesmasher forgot to update AddonManager to process CoderAPI
 
-*   **26.1.2 - 26.2 Support:**
-    *   **Added plugin version for 26.1.2-26.2**
-    *   **Plugin built using `Java 25`**
+*   **Coder API Legacy Support:**
+    *   **Brought back `me.coder.api.CoderAPI` - Points to dev.codestuff.coder.api.CoderAPI**
+        > added `me.coder.api` for older/not updated coder addons to work on version **2.4.2** or newer.
+
+
 
 ---
 
@@ -34,6 +39,7 @@ The remote GWI Editor is highly secure. Session connections leverage **SHA-256 t
 
 ### 🛡 Virtual Console Interface Security
 The custom minecraft console panel blocks /op commands and is secured by `SHA-256` Server Password tokens, to disable this feature, you can go to `/plugins/Coder/.gwi/secure/serverPassword.env` and remove the value of `serverPassword=`.
+
 ---
 
 ## 📖 Quick Start
@@ -67,7 +73,7 @@ Drop your scripts and check execution logs in the following directories:
 *   `/coder editor do-not-trust <username>` – Denies access to a connection request.
 *   `/coder editor stop` – Terminates the active GWI Web Editor session immediately.
 
-### Virtual Console Interface
+#### Virtual Console Interface
 *   `/coder gen-pass` - Generates a unique SHA-256 server password to access `/mc-console/`.
 
 #### System & Maintenance
@@ -80,17 +86,8 @@ Drop your scripts and check execution logs in the following directories:
 *   `/coder enable-activity-logging` – Enables activity logging.
 *   `/coder disable-activity-logging` – Disables activity logging.
 
----
-
-## 📋 Console Session Example
-
-Here is a typical session workflow demonstrating how to generate a server password:
-
-```text
-coder gen-pass
-[12:38:39 INFO]: [Coder] Server password regenerated and saved to .gwi/secure/serverPassword.env
-[12:38:40 INFO]: [Coder] Server password generated!
-[12:38:40 INFO]: Copy this hash into the MC Console auth form:
-[12:38:40 INFO]: 857a675a14c2e8b19eeb838d28d16a91128262417c23e4fdb08e078ffdef211f
-[12:38:40 INFO]: Saved to: plugins/Coder/.gwi/secure/serverPassword.env
-```
+#### Coderc (Coder Compiler)
+*   `/coderc run <filename.class>` - Runs a .class file.
+*   `/coderc compile <filename.java>` - Compiles a .java into .class
+*   **Aliases:**
+    > */cojav, /cjavac, /cjava, /codec*

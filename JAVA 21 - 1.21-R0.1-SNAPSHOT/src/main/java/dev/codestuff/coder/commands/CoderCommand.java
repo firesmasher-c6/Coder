@@ -4,6 +4,8 @@ import org.bukkit.command.*;
 
 import dev.codestuff.coder.CoderPlugin;
 import dev.codestuff.coder.JavaCompiler;
+import dev.codestuff.coder.api.CoderAPI;
+import dev.codestuff.coder.api.CoderCommandHandler;
 import dev.codestuff.coder.manager.BackupManager;
 import dev.codestuff.coder.manager.ConfigManager;
 import dev.codestuff.coder.manager.EditorManager;
@@ -275,7 +277,19 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // All other commands need a filename
+        // Check API-registered subcommands from addons (no filename required)
+        CoderCommandHandler apiHandler = CoderAPI.getInstance().getCoderCommand(action);
+        if (apiHandler != null) {
+            String permission = apiHandler.getPermission();
+            if (permission != null && !permission.isEmpty() && !sender.hasPermission(permission)) {
+                sender.sendMessage("§c[Coder] You don't have permission to use this command.");
+                return true;
+            }
+            apiHandler.execute(sender, args);
+            return true;
+        }
+
+        // All remaining built-in commands need a filename
         if (args.length < 2) {
             showCommandHelp(sender, action);
             return true;
@@ -459,10 +473,33 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§a/coder editor start|stop§7- Web file editor");
         sender.sendMessage("§a/coder gen-pass         §7- Generate MC Console password");
         sender.sendMessage("§a/coder help [command]   §7- Show command help");
+
+        // Show addon-registered commands
+        Set<String> addonCmds = CoderAPI.getInstance().getRegisteredCoderCommands();
+        if (!addonCmds.isEmpty()) {
+            sender.sendMessage("§6--- Addon Commands ---");
+            for (String sub : addonCmds) {
+                CoderCommandHandler h = CoderAPI.getInstance().getCoderCommand(sub);
+                sender.sendMessage("§a/coder " + sub + " §7- " + (h != null ? h.getDescription() : ""));
+            }
+        }
+
         sender.sendMessage("§6╚═══════════════════════════════════════╝");
     }
 
     private void showCommandHelp(CommandSender sender, String command) {
+        // Check addon commands first
+        CoderCommandHandler apiHandler = CoderAPI.getInstance().getCoderCommand(command);
+        if (apiHandler != null) {
+            sender.sendMessage("§6╔═══════════════════════════════════════╗");
+            sender.sendMessage("§6║§f " + apiHandler.getCommandName().toUpperCase() + " §6║");
+            sender.sendMessage("§6╠═══════════════════════════════════════╣");
+            sender.sendMessage("§aUsage: §f" + apiHandler.getUsage());
+            sender.sendMessage("§7" + apiHandler.getDescription());
+            sender.sendMessage("§6╚═══════════════════════════════════════╝");
+            return;
+        }
+
         switch (command) {
             case "run":
                 sender.sendMessage("§6╔═══════════════════════════════════════╗");
@@ -696,7 +733,6 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            // Only add commands that are enabled in config
             if (configManager.isRunCommandEnabled()) completions.add("run");
             if (configManager.isLoadCommandEnabled()) completions.add("load");
             if (configManager.isUnloadCommandEnabled()) completions.add("unload");
@@ -708,17 +744,23 @@ public class CoderCommand implements CommandExecutor, TabCompleter {
             if (configManager.isCommandEnabled("backup")) completions.add("backup");
             if (configManager.isCommandEnabled("auto-backup-start")) completions.add("auto-backup-start");
             if (configManager.isCommandEnabled("auto-backup-stop")) completions.add("auto-backup-stop");
-            
             completions.add("reload-config");
             if (configManager.isEditorCommandEnabled()) completions.add("editor");
             completions.add("gen-pass");
             completions.add("help");
-            
+            // Addon-registered subcommands
+            completions.addAll(CoderAPI.getInstance().getRegisteredCoderCommands());
             return completions;
         }
-        
+
         if (args.length == 2 && args[0].equalsIgnoreCase("editor")) {
             return Arrays.asList("start", "stop", "trust", "do-not-trust");
+        }
+
+        // Delegate tab completion to API-registered handler if applicable
+        CoderCommandHandler apiHandler = CoderAPI.getInstance().getCoderCommand(args[0].toLowerCase());
+        if (apiHandler != null) {
+            return apiHandler.getTabCompletions(sender, args);
         }
 
         if (args.length == 2 && isValidAction(args[0])) {

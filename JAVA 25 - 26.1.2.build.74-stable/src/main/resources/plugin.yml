@@ -1,7 +1,7 @@
 name: Coder
-version: 2.4.1
+version: 2.4.2
 main: dev.codestuff.coder.CoderPlugin
-api-version: '26.1.2'
+api-version: '1.21'
 
 description: Execute Python, Lua, and Java scripts on your Minecraft server
 
@@ -13,6 +13,16 @@ commands:
     permission-message: You must be an OP to use this command!
     aliases:
       - code
+  coderc:
+    description: Compile and run Java files from scripts/
+    usage: /coderc <compile|run> [file]
+    permission: coder.admin
+    permission-message: You must be an OP to use this command!
+    aliases:
+      - codec
+      - cjavac
+      - cjava
+      - cojav
 
 permissions:
   coder.admin:

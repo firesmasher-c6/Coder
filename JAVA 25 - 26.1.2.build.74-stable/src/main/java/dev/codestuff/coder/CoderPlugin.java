@@ -4,6 +4,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.codestuff.coder.api.CoderAPI;
 import dev.codestuff.coder.commands.CoderCommand;
+import dev.codestuff.coder.commands.CodercCommand;
+import dev.codestuff.coder.listener.PlayerCommandListener;
 import dev.codestuff.coder.listener.PlayerJoinListener;
 import dev.codestuff.coder.manager.AddonManager;
 import dev.codestuff.coder.manager.BackupManager;
@@ -11,6 +13,7 @@ import dev.codestuff.coder.manager.ConfigManager;
 import dev.codestuff.coder.manager.EditorManager;
 import dev.codestuff.coder.manager.ScriptManager;
 import dev.codestuff.coder.manager.VersionManager;
+import dev.codestuff.coder.JavaCompiler;
 
 import java.io.File;
 
@@ -51,23 +54,30 @@ public class CoderPlugin extends JavaPlugin {
         
         versionManager.start();
         
-        // Load and verify all addons
-        addonManager.loadAddons();
-        
         this.editorManager = new EditorManager(this);
 
         CoderCommand cmdHandler = new CoderCommand(this, scriptManager, versionManager, configManager, javaCompiler, backupManager, editorManager);
         getCommand("coder").setExecutor(cmdHandler);
         getCommand("coder").setTabCompleter(cmdHandler);
-        
+
+        CodercCommand codercHandler = new CodercCommand(this, javaCompiler);
+        getCommand("coderc").setExecutor(codercHandler);
+        getCommand("coderc").setTabCompleter(codercHandler);
+
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(versionManager), this);
+
+        // Addon scan is deferred — triggered the first time someone runs /pl or
+        // "plugins" in console, by which point all plugins are fully enabled.
+        getServer().getPluginManager().registerEvents(new PlayerCommandListener(this, addonManager), this);
 
         this.enabledAt = System.currentTimeMillis();
         getLogger().info("Coder v" + getPluginMeta().getVersion() + " enabled.");
 
-        getLogger().warning("===========================[ API ]===========================");
+        getLogger().warning("**********************************************************************************************************");
+        getLogger().warning("Coder API Warning.");
         getLogger().warning("API Path has changed to 'dev.codestuff.coder.api.CoderAPI', some addons may break.");
-        getLogger().warning("===========================[ API ]===========================");
+        getLogger().warning("Coder 2.4.2+ accepts 'me.coder.api.CoderAPI'. Addons using 'me.coder' will be called as Legacy Addons.");
+        getLogger().warning("**********************************************************************************************************");
     }
 
     private void setupFolders() {
