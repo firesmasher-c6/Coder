@@ -1,0 +1,4 @@
+api-version: 'api-2.4.stable-3'
+organization: CodeStuff
+api-path: 'dev.codestuff.coder.api'
+api-legacy-path: 'me.coder.api'
