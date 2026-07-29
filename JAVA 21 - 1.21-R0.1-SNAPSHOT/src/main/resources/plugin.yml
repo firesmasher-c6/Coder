@@ -1,5 +1,5 @@
 name: Coder
-version: 2.4.3
+version: 2.4.4
 main: dev.codestuff.coder.CoderPlugin
 api-version: '1.21'
 

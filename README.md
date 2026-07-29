@@ -1,24 +1,24 @@
-# Coder v2.4.3
+# Coder v2.4.4
 
 > **The most powerful scripting engine for Minecraft. Run Java, Lua, and Python natively on your server with real-time web editing.**
 
 ![Compatibility](https://img.shields.io/badge/compatibility-Paper/Purpur-green)
-![Version](https://img.shields.io/badge/version-2.4.3-green)
+![Version](https://img.shields.io/badge/version-2.4.4-green)
 ---
 
-## 🚀 What's New in v2.4.3
+## 🚀 What's New in v2.4.4
 
-*   **BackupManager fix:**
-    *   **Fixed zipping problem**
-        > Zipping below 2.4.2 caused zipping it self over and over causing a GIGABYTE ZIP.
-    
-*   **Coder Addons Lising:**
-    *   **Run `/pl` or `/plugins` and the plugin will log coder addons. Along with the server plugins.**
+*   **Implemented New API Version:**
+    *   **Now implementing and using the api version `2.5-CA.stable`**
 
-*   **Added API Versoning:**
-    *   **
+*   **New API Versioning:**
+    **Now `version-CA.status`, CA for "Coder Addon"**
 
+*   **Fixed Missing/Bugged Classpaths:**
+    *   **Updated Libraries.java and JavaCompiler.java to detect classpaths**
 
+*   **Added More Dependencies:**
+    *   **Added extra dependencies such as `nbt-api` and `commons-lang3` for scripts**
 
 ---
 
@@ -35,6 +35,7 @@
 *   **Graphical Web Interface (GWI):** Securely manage, edit, and delete files on your server using a remote web browser window.
 *   **Virtual Console Interface (VCI):** Lets you securely run commands via `https://coder-gwieditor.firesmasher.workers.dev/mc-console?=YOUR_TOKEN_HERE`.
 *   **Java 25 Support:** Download the java-25 version of Coder.
+*   **Extra Useful Utilities:** Lets you use JetBrains annotations, nbt api, commons lang3 and etc.
 
 ### 🛡 GWI Editor Security
 The remote GWI Editor is highly secure. Session connections leverage **SHA-256 tokens** which are mathematically impossible to brute-force or guess. Additionally, every session token automatically expires after 30 minutes of inactivity.

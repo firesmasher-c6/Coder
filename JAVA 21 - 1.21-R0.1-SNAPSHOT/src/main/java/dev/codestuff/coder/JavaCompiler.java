@@ -34,20 +34,14 @@ public class JavaCompiler {
         this.scriptManager = new JavaScriptManager((org.bukkit.plugin.java.JavaPlugin) plugin);
         this.bukkitHandler = new BukkitInteractionHandler((org.bukkit.plugin.java.JavaPlugin) plugin);
         
-        // Create folders if they don't exist
-        if (!loadedFolder.exists()) {
-            loadedFolder.mkdirs();
-        }
-        if (!runtimeFolder.exists()) {
-            runtimeFolder.mkdirs();
-        }
+        if (!loadedFolder.exists()) loadedFolder.mkdirs();
+        if (!runtimeFolder.exists()) runtimeFolder.mkdirs();
     }
 
     /**
      * Compile and execute a Java file (stores in Runtime folder)
      */
     public boolean compileAndExecute(File javaFile, CommandSender executor) {
-        // Security check using new JavaScriptManager (JSM)
         try {
             if (!scriptManager.validateScript(javaFile)) {
                 executor.sendMessage("§c[Coder] Script validation failed: " + scriptManager.getBlockReason(javaFile));
@@ -76,7 +70,6 @@ public class JavaCompiler {
      * Compile and load a Java file to memory (stores in Loaded folder)
      */
     public boolean compileAndLoad(File javaFile, CommandSender executor) {
-        // Security check using new JavaScriptManager (JSM)
         try {
             if (!scriptManager.validateScript(javaFile)) {
                 executor.sendMessage("§c[Coder] Script validation failed: " + scriptManager.getBlockReason(javaFile));
@@ -96,7 +89,6 @@ public class JavaCompiler {
             executor.sendMessage("§a[Coder] Compilation successful (" + duration + "ms)");
             executor.sendMessage("§a[Coder] Class stored in Loaded folder");
             
-            // Also register with BukkitInteractionHandler for Bukkit integration
             File classFile = new File(loadedFolder, className + ".class");
             if (classFile.exists()) {
                 bukkitHandler.loadClassFile(classFile);
@@ -140,7 +132,13 @@ public class JavaCompiler {
     }
 
     /**
-     * Compile a Java file to bytecode
+     * Compile a Java file to bytecode.
+     *
+     * Classpath is built entirely by Libraries.getCompilerClasspath(), which covers:
+     *   - JVM system classpath
+     *   - Paper/Spigot server JAR  (Bukkit, Adventure, etc.)
+     *   - Paper's transitive runtime libraries  (via reflection — works on 1.18+)
+     *   - All loaded plugin JARs  (including Coder itself → JetBrains annotations, Gson, Lua, Jython)
      */
     private boolean compile(File javaFile, CommandSender executor, File outputFolder) {
         javax.tools.JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -149,32 +147,11 @@ public class JavaCompiler {
             return false;
         }
 
-        // Build classpath
-        StringJoiner classPath = new StringJoiner(File.pathSeparator);
-        
-        String systemClassPath = System.getProperty("java.class.path");
-        if (systemClassPath != null && !systemClassPath.isEmpty()) {
-            classPath.add(systemClassPath);
-        }
+        String classPath = Libraries.getCompilerClasspath();
 
-        // Add Bukkit/Paper API
-        try {
-            File serverJar = new File(Bukkit.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            classPath.add(serverJar.getAbsolutePath());
-        } catch (Exception ignored) {}
-
-        // Add all plugin JARs
-        for (org.bukkit.plugin.Plugin runningPlugin : Bukkit.getPluginManager().getPlugins()) {
-            try {
-                File pluginJar = new File(runningPlugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
-                classPath.add(pluginJar.getAbsolutePath());
-            } catch (Exception ignored) {}
-        }
-
-        // Compile
         String[] args = {
             "-d", outputFolder.getAbsolutePath(),
-            "-cp", classPath.toString(), 
+            "-cp", classPath,
             "--release", "21",
             javaFile.getAbsolutePath()
         };
@@ -214,7 +191,7 @@ public class JavaCompiler {
                     java.lang.reflect.Method mainMethod = loadedClass.getMethod("main", String[].class);
                     mainMethod.invoke(null, (Object) new String[]{});
                     executor.sendMessage("§a[Coder] Execution complete");
-                    return; 
+                    return;
                 } catch (NoSuchMethodException ignored) {}
 
                 // Try no-arg constructor
@@ -275,23 +252,14 @@ public class JavaCompiler {
         directory.delete();
     }
 
-    /**
-     * Get the BukkitInteractionHandler for Java class Bukkit integration
-     */
     public BukkitInteractionHandler getBukkitHandler() {
         return bukkitHandler;
     }
 
-    /**
-     * Get the JavaScriptManager for strict Java security validation
-     */
     public JavaScriptManager getJavaScriptManager() {
         return scriptManager;
     }
 
-    /**
-     * Cleanup handlers on disable
-     */
     public void cleanup() {
         bukkitHandler.cleanup();
     }

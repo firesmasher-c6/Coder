@@ -29,6 +29,20 @@
                   <mainClass>dev.codestuff.coder.CoderPlugin</mainClass>
                 </transformer>
               </transformers>
+              <relocations>
+                <relocation>
+                  <pattern>org.luaj</pattern>
+                  <shadedPattern>dev.codestuff.coder.libs.luaj</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.python</pattern>
+                  <shadedPattern>dev.codestuff.coder.libs.jython</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.gson</pattern>
+                  <shadedPattern>dev.codestuff.coder.libs.gson</shadedPattern>
+                </relocation>
+              </relocations>
             </configuration>
           </execution>
         </executions>
@@ -50,6 +64,10 @@
     <repository>
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+    <repository>
+      <id>codemc-repo</id>
+      <url>https://repo.codemc.io/repository/maven-public/</url>
     </repository>
   </repositories>
   <dependencies>

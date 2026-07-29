@@ -1,4 +1,6 @@
-api-version: 'api-2.4.stable-3'
+api-version: '2.5-CA.stable'
 organization: CodeStuff
 api-path: 'dev.codestuff.coder.api'
 api-legacy-path: 'me.coder.api'
+
+# API Versioning: version-CA.status

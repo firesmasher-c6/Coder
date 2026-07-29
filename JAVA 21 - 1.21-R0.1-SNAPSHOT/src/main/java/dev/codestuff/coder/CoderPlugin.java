@@ -1,5 +1,6 @@
 package dev.codestuff.coder;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.codestuff.coder.api.CoderAPI;
@@ -78,6 +79,7 @@ public class CoderPlugin extends JavaPlugin {
         getLogger().warning("API Path has changed to 'dev.codestuff.coder.api.CoderAPI', some addons may break.");
         getLogger().warning("Coder 2.4.2+ accepts 'me.coder.api.CoderAPI'. Addons using 'me.coder' will be called as Legacy Addons.");
         getLogger().warning("**********************************************************************************************************");
+
     }
 
     private void setupFolders() {
