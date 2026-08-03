@@ -29,9 +29,10 @@ The legacy path `me.coder.api` is still accepted for backwards compatibility, bu
 
 | API Version | Status |
 |---|---|
-| api-2.4.stable-3 | Stable |
-| api-2.5.experimental-4 | Under Development |
+| 2.5-CA.stable | Stable/Release |
+| api-2.4.stable-3 | Stable/Release |
+
 
 ---
 
-*Coder | CodeStuff | 2026*
+*FireSmasher (`firesmasher-c6`) | CodeStuff | 2026*
